@@ -98,6 +98,13 @@ const Store = (() => {
   }
   function saveSettings(s) { _set(KEYS.settings, s); }
 
+  /* ── Preview Role (admin-only real mode) ── */
+  let _previewRole = null;
+  function setPreviewRole(role) { _previewRole = role || null; }
+  function getActiveRole() { return _previewRole || getSettings().role; }
+  function isAdminMode() { return !_previewRole && getSettings().role === ROLES.ADMIN; }
+  function isPreviewMode() { return _previewRole != null; }
+
   /* ── Team ── */
   // API: GET /api/team · POST /api/team · PUT /api/team/:id · DELETE /api/team/:id
   function getTeam() { return _get(KEYS.team) || []; }
@@ -906,7 +913,9 @@ const Store = (() => {
 
     /*  Action capabilities per role  */
     can(action) {
-      const role = getSettings().role;
+      /* Preview mode: block ALL mutations — view only */
+      if (isPreviewMode()) return false;
+      const role = getActiveRole();
       const matrix = {
         /* Task actions */
         'create_task':       [ROLES.ADMIN],
@@ -952,13 +961,13 @@ const Store = (() => {
 
     /*  Whether a role can see a page  */
     canAccessPage(page) {
-      const role = getSettings().role;
+      const role = getActiveRole();
       return (this.pages[role] || []).includes(page);
     },
 
     /*  Can current user view a specific comment?  */
     canViewComment(commentVisibility) {
-      const role = getSettings().role;
+      const role = getActiveRole();
       const userId = _currentUserId();
       return _canViewComment(role, userId, commentVisibility);
     },
@@ -970,13 +979,13 @@ const Store = (() => {
 
     /*  Which pages the current role can see  */
     visiblePages() {
-      const role = getSettings().role;
+      const role = getActiveRole();
       return this.pages[role] || ['dashboard', 'settings'];
     },
 
     /*  Filter tasks for the current role  */
     filterTasks(tasks) {
-      const role = getSettings().role;
+      const role = getActiveRole();
       const name = getSettings().name;
       if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return tasks;
       // Designers & SMM see only their assigned tasks
@@ -985,7 +994,7 @@ const Store = (() => {
 
     /*  Filter approvals for the current role  */
     filterApprovals(approvals) {
-      const role = getSettings().role;
+      const role = getActiveRole();
       const name = getSettings().name;
       if (role === ROLES.ADMIN || role === ROLES.DIRECTOR) return approvals;
       // Manager sees all (they submit); designers/SMM see only their own
@@ -995,7 +1004,7 @@ const Store = (() => {
 
     /*  Filter assets for the current role  */
     filterAssets(assets) {
-      const role = getSettings().role;
+      const role = getActiveRole();
       const name = getSettings().name;
       if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return assets;
       return assets.filter(a => a.owner === name);
@@ -1003,7 +1012,7 @@ const Store = (() => {
 
     /*  Filter content for the current role  */
     filterContent(content) {
-      const role = getSettings().role;
+      const role = getActiveRole();
       const name = getSettings().name;
       if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return content;
       return content.filter(c => c.assignee === name);
@@ -1011,7 +1020,7 @@ const Store = (() => {
 
     /* Items for the "More" drawer — role-based */
     drawerItems() {
-      const role = getSettings().role;
+      const role = getActiveRole();
       const ALL = [
         { page: 'assets',    icon: '📁', label: 'Assets' },
         { page: 'content',   icon: '🎬', label: 'Content' },
@@ -1040,6 +1049,7 @@ const Store = (() => {
   return {
     VERSION, ROLES, ALL_ROLES,
     getSettings, saveSettings,
+    setPreviewRole, getActiveRole, isAdminMode, isPreviewMode,
     getTeam, saveTeam, addTeamMember, updateTeamMember, deleteTeamMember,
     getTasks, saveTasks, addTask, updateTask, deleteTask,
     getApprovals, saveApprovals, addApproval, updateApproval, addApprovalComment,

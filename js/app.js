@@ -1,8 +1,12 @@
 /* ─── App — Router, Shell, Modal, Drawer, Role Switcher ─── */
 const App = (() => {
   let _currentPage = 'dashboard';
-  let _previewMode = false;
-  let _originalRole = null;
+
+  /* Role labels for display */
+  const ROLE_LABELS = {
+    ADMIN: 'Admin', DIRECTOR: 'Director', MANAGER: 'Manager',
+    DESIGNER: 'Designer', SOCIAL_MEDIA_INTERN: 'Social Intern',
+  };
 
   const PAGES = {
     dashboard:    () => DashboardPage.render(),
@@ -122,6 +126,7 @@ const App = (() => {
     const container = document.getElementById('app-content');
     container.innerHTML = PAGES[_currentPage]();
     _updateNav();
+    _updatePreviewBanner();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -144,9 +149,33 @@ const App = (() => {
   }
 
   function updateHeader() {
-    const s = Store.getSettings();
     const badge = document.getElementById('role-badge');
-    if (badge) badge.textContent = s.role;
+    if (!badge) return;
+    const activeRole = Store.getActiveRole();
+    badge.textContent = ROLE_LABELS[activeRole] || activeRole;
+    if (Store.isPreviewMode()) {
+      badge.style.background = 'var(--warning, #E8A640)';
+      badge.style.color = '#fff';
+    } else {
+      badge.style.background = '';
+      badge.style.color = '';
+    }
+  }
+
+  /* ── Preview Banner ── */
+  function _updatePreviewBanner() {
+    const banner = document.getElementById('preview-banner');
+    const roleName = document.getElementById('preview-role-name');
+    if (!banner) return;
+    if (Store.isPreviewMode()) {
+      const label = ROLE_LABELS[Store.getActiveRole()] || Store.getActiveRole();
+      roleName.textContent = label;
+      banner.style.display = 'flex';
+      document.body.classList.add('has-preview-banner');
+    } else {
+      banner.style.display = 'none';
+      document.body.classList.remove('has-preview-banner');
+    }
   }
 
   /* ── More Drawer ── */
@@ -173,27 +202,27 @@ const App = (() => {
     }
   }
 
-  /* ── Role Switcher ── */
+  /* ── Role Switcher (preview only — real user is always ADMIN) ── */
   function openRoleSwitcher() {
     const overlay = document.getElementById('role-switcher-overlay');
     const body = document.getElementById('role-switcher-body');
-    const currentRole = Store.getSettings().role;
+    const activeRole = Store.getActiveRole();
     const R = Store.ROLES;
     const roles = [
       { role: R.ADMIN,                icon: '🛡️', label: 'Admin',          desc: 'Full system access' },
-      { role: R.DIRECTOR,             icon: '👔', label: 'Director',       desc: 'Approve & oversee' },
-      { role: R.MANAGER,              icon: '📋', label: 'Manager',        desc: 'Manage tasks & assets' },
-      { role: R.DESIGNER,             icon: '🎨', label: 'Designer',       desc: 'Design assignments' },
-      { role: R.SOCIAL_MEDIA_INTERN,  icon: '📱', label: 'Social Intern',  desc: 'Content & social' },
+      { role: R.DIRECTOR,             icon: '👔', label: 'Director',       desc: 'Approve & oversee (preview)' },
+      { role: R.MANAGER,              icon: '📋', label: 'Manager',        desc: 'Manage tasks & assets (preview)' },
+      { role: R.DESIGNER,             icon: '🎨', label: 'Designer',       desc: 'Design assignments (preview)' },
+      { role: R.SOCIAL_MEDIA_INTERN,  icon: '📱', label: 'Social Intern',  desc: 'Content & social (preview)' },
     ];
     body.innerHTML = roles.map(r => `
-      <button class="role-option ${r.role === currentRole ? 'active' : ''}" onclick="App.switchRole('${r.role}')">
+      <button class="role-option ${r.role === activeRole ? 'active' : ''}" onclick="App.switchRole('${r.role}')">
         <span class="role-option-icon">${r.icon}</span>
         <div class="role-option-info">
-          <span class="role-option-name">${r.label}</span>
+          <span class="role-option-name">${r.label}${r.role !== R.ADMIN ? ' 👁️' : ''}</span>
           <span class="role-option-desc">${r.desc}</span>
         </div>
-        ${r.role === currentRole ? '<span class="role-option-check">✓</span>' : ''}
+        ${r.role === activeRole ? '<span class="role-option-check">✓</span>' : ''}
       </button>
     `).join('');
     overlay.classList.add('show');
@@ -209,38 +238,18 @@ const App = (() => {
   }
 
   function switchRole(role) {
-    const current = Store.getSettings();
-    if (!_previewMode) {
-      _originalRole = current.role;
-    }
-    Store.saveSettings({ ...current, role });
-    _previewMode = (role !== _originalRole && _originalRole !== null);
-
-    const banner = document.getElementById('preview-banner');
-    const roleName = document.getElementById('preview-role-name');
-    if (_previewMode) {
-      roleName.textContent = role;
-      banner.style.display = 'flex';
-      document.body.classList.add('has-preview-banner');
+    /* Admin = exit preview; anything else = enter preview */
+    if (role === Store.ROLES.ADMIN) {
+      Store.setPreviewRole(null);
     } else {
-      banner.style.display = 'none';
-      document.body.classList.remove('has-preview-banner');
-      _originalRole = null;
+      Store.setPreviewRole(role);
     }
-
     closeRoleSwitcher();
     refresh();
   }
 
   function exitPreview() {
-    if (_originalRole) {
-      const current = Store.getSettings();
-      Store.saveSettings({ ...current, role: _originalRole });
-    }
-    _previewMode = false;
-    _originalRole = null;
-    document.getElementById('preview-banner').style.display = 'none';
-    document.body.classList.remove('has-preview-banner');
+    Store.setPreviewRole(null);
     refresh();
   }
 
@@ -263,6 +272,7 @@ const App = (() => {
     init, navigate, refresh, updateHeader, showModal, closeModal,
     openMoreDrawer, closeMoreDrawer,
     openRoleSwitcher, closeRoleSwitcher, switchRole, exitPreview,
+    ROLE_LABELS,
   };
 })();
 

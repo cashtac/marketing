@@ -216,6 +216,11 @@ const CampaignsPage = (() => {
               </div>
             `;
           }).join('')}
+          ${Store.isPreviewMode() ? `
+            <div style="padding:10px 0;font-size:0.78rem;color:var(--text-muted);text-align:center">
+              🔒 Admin only. <a href="#" onclick="event.preventDefault();App.exitPreview()" style="color:var(--primary);font-weight:600">Exit Preview</a> to post comments.
+            </div>
+          ` : `
           <div class="comment-input-row">
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
               <label style="font-size:0.7rem;font-weight:600;color:var(--text-muted);white-space:nowrap">Visible to:</label>
@@ -226,6 +231,7 @@ const CampaignsPage = (() => {
             <textarea id="comment-text" class="comment-textarea" placeholder="Add a comment… Use @username to mention" rows="2"></textarea>
             <button class="btn btn-primary" style="padding:6px 14px;font-size:0.78rem;margin-top:6px;align-self:flex-end" onclick="CampaignsPage.postComment('${c.id}')">Post</button>
           </div>
+          `}
         </div>
 
         ${canManage ? `<button class="btn btn-primary btn-block" style="margin-top:16px" onclick="CampaignsPage.openEdit('${c.id}')">✏️ Edit Campaign</button>` : ''}
@@ -366,6 +372,7 @@ const CampaignsPage = (() => {
 
   /* ═══════ COMMENT ACTION ═══════ */
   function postComment(campaignId) {
+    if (Store.isPreviewMode()) return;
     const textarea = document.getElementById('comment-text');
     const text = (textarea?.value || '').trim();
     if (!text) return;
