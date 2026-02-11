@@ -178,18 +178,19 @@ const App = (() => {
     const overlay = document.getElementById('role-switcher-overlay');
     const body = document.getElementById('role-switcher-body');
     const currentRole = Store.getSettings().role;
+    const R = Store.ROLES;
     const roles = [
-      { role: 'Admin', icon: '🛡️', desc: 'Full system access' },
-      { role: 'Marketing Director', icon: '👔', desc: 'Approve & oversee' },
-      { role: 'Marketing Manager', icon: '📋', desc: 'Manage tasks & assets' },
-      { role: 'Graphic Designer', icon: '🎨', desc: 'Design assignments' },
-      { role: 'Social Media Manager', icon: '📱', desc: 'Content & social' },
+      { role: R.ADMIN,                icon: '🛡️', label: 'Admin',          desc: 'Full system access' },
+      { role: R.DIRECTOR,             icon: '👔', label: 'Director',       desc: 'Approve & oversee' },
+      { role: R.MANAGER,              icon: '📋', label: 'Manager',        desc: 'Manage tasks & assets' },
+      { role: R.DESIGNER,             icon: '🎨', label: 'Designer',       desc: 'Design assignments' },
+      { role: R.SOCIAL_MEDIA_INTERN,  icon: '📱', label: 'Social Intern',  desc: 'Content & social' },
     ];
     body.innerHTML = roles.map(r => `
       <button class="role-option ${r.role === currentRole ? 'active' : ''}" onclick="App.switchRole('${r.role}')">
         <span class="role-option-icon">${r.icon}</span>
         <div class="role-option-info">
-          <span class="role-option-name">${r.role}</span>
+          <span class="role-option-name">${r.label}</span>
           <span class="role-option-desc">${r.desc}</span>
         </div>
         ${r.role === currentRole ? '<span class="role-option-check">✓</span>' : ''}

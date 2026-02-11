@@ -25,10 +25,10 @@ const TeamPage = (() => {
               <div class="avatar avatar-lg">${_initials(m.name)}</div>
               <div class="team-info">
                 <div class="team-name">${_esc(m.name)}</div>
-                <div class="team-role">${_esc(m.role)}</div>
+                <div class="team-role">${_roleLabel(m.role)}</div>
                 <div class="team-tasks">${memberTasks.length} active task${memberTasks.length !== 1 ? 's' : ''}</div>
               </div>
-              <span class="chip chip-role" style="font-size:0.65rem">${_esc(m.role.split(' ').pop())}</span>
+              <span class="chip chip-role" style="font-size:0.65rem">${_roleLabel(m.role)}</span>
             </div>
           `;
         }).join('')}
@@ -40,7 +40,7 @@ const TeamPage = (() => {
 
   function openAdd() {
     if (!Store.Permissions.can('manage_team')) return;
-    const roles = ['Marketing Director', 'Marketing Manager', 'Graphic Designer', 'Social Media Manager', 'Admin'];
+    const roles = _roleOptions();
     App.showModal('Add Team Member', `
       <div class="form-group">
         <label class="form-label">Name</label>
@@ -49,7 +49,7 @@ const TeamPage = (() => {
       <div class="form-group">
         <label class="form-label">Role</label>
         <select class="form-select" id="team-role">
-          ${roles.map(r => `<option value="${r}">${r}</option>`).join('')}
+          ${roles.map(r => `<option value="${r.value}">${r.label}</option>`).join('')}
         </select>
       </div>
       <button class="btn btn-primary btn-block" onclick="TeamPage.saveAdd()">Add Member</button>
@@ -73,13 +73,13 @@ const TeamPage = (() => {
     if (!Store.Permissions.can('manage_team')) return;
     const m = Store.getTeam().find(x => x.id === id);
     if (!m) return;
-    const roles = ['Marketing Director', 'Marketing Manager', 'Graphic Designer', 'Social Media Manager', 'Admin'];
+    const roles = _roleOptions();
     const tasks = Store.getTasks().filter(t => t.assignee === m.name);
 
     App.showModal(m.name, `
       <div style="text-align:center;margin-bottom:20px">
         <div class="avatar avatar-lg" style="margin:0 auto 10px;width:60px;height:60px;font-size:1.2rem">${_initials(m.name)}</div>
-        <div class="chip chip-role">${_esc(m.role)}</div>
+        <div class="chip chip-role">${_roleLabel(m.role)}</div>
       </div>
 
       <div class="form-group">
@@ -89,7 +89,7 @@ const TeamPage = (() => {
       <div class="form-group">
         <label class="form-label">Role</label>
         <select class="form-select" id="edit-team-role">
-          ${roles.map(r => `<option value="${r}" ${r === m.role ? 'selected' : ''}>${r}</option>`).join('')}
+          ${roles.map(r => `<option value="${r.value}" ${r.value === m.role ? 'selected' : ''}>${r.label}</option>`).join('')}
         </select>
       </div>
 
@@ -137,6 +137,11 @@ const TeamPage = (() => {
   function _esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
   function _initials(n) { return (n || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2); }
   function _statusLabel(s) { return { todo: 'To-Do', progress: 'In Progress', review: 'Review', done: 'Done' }[s] || s; }
+  const ROLE_LABELS = { ADMIN:'Admin', DIRECTOR:'Director', MANAGER:'Manager', DESIGNER:'Designer', SOCIAL_MEDIA_INTERN:'Social Intern' };
+  function _roleLabel(r) { return ROLE_LABELS[r] || r; }
+  function _roleOptions() {
+    return Object.entries(ROLE_LABELS).map(([k,v]) => ({ value: k, label: v }));
+  }
 
   return { render, openAdd, saveAdd, openEdit, saveEdit, remove };
 })();

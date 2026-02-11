@@ -1348,6 +1348,23 @@ body.has-preview-banner .app-content { padding-top: calc(var(--header-height) + 
 }
 .comment-textarea:focus { border-color: var(--pink-300); }
 .comment-textarea::placeholder { color: var(--text-light); }
+.comment-vis-badge {
+  font-size: 0.58rem; color: var(--text-light); font-weight: 500;
+  background: var(--gray-50); border-radius: 4px; padding: 1px 5px;
+  white-space: nowrap;
+}
+.comment-hidden-indicator {
+  font-size: 0.72rem; color: var(--text-muted); padding: 8px 0 6px;
+  display: flex; align-items: center; gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.comment-vis-select {
+  font-size: 0.72rem; padding: 4px 8px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--bg-card);
+  color: var(--text); flex: 1; max-width: 200px;
+  font-family: inherit; outline: none;
+}
+.comment-vis-select:focus { border-color: var(--pink-300); }
 
 /* ─── Directory Filters ─── */
 .dir-toggle-row { margin: 6px 0 4px; }

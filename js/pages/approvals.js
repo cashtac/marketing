@@ -4,9 +4,9 @@ const ApprovalsPage = (() => {
 
   /* Stage progression: designer submits → manager_review → admin_review → director_review → approved */
   const STAGES = {
-    manager_review:  { label: 'Manager Review',  icon: '📋', nextStage: 'admin_review',    reviewerRole: ['Marketing Manager', 'Admin'] },
-    admin_review:    { label: 'Admin Review',     icon: '🛡️', nextStage: 'director_review', reviewerRole: ['Admin'] },
-    director_review: { label: 'Director Review',  icon: '👔', nextStage: 'approved',         reviewerRole: ['Marketing Director', 'Admin'] },
+    manager_review:  { label: 'Manager Review',  icon: '📋', nextStage: 'admin_review',    reviewerRole: ['MANAGER', 'ADMIN'] },
+    admin_review:    { label: 'Admin Review',     icon: '🛡️', nextStage: 'director_review', reviewerRole: ['ADMIN'] },
+    director_review: { label: 'Director Review',  icon: '👔', nextStage: 'approved',         reviewerRole: ['DIRECTOR', 'ADMIN'] },
     approved:        { label: 'Final Approved',   icon: '✅', nextStage: null,               reviewerRole: [] },
   };
 

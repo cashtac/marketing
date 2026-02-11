@@ -1,6 +1,13 @@
 /* ─── Settings Page ─── */
 const SettingsPage = (() => {
-  const ROLES = ['Admin', 'Marketing Director', 'Marketing Manager', 'Graphic Designer', 'Social Media Manager'];
+  const R = Store.ROLES;
+  const ROLE_LIST = [
+    { key: R.ADMIN,               label: 'Admin' },
+    { key: R.DIRECTOR,            label: 'Director' },
+    { key: R.MANAGER,             label: 'Manager' },
+    { key: R.DESIGNER,            label: 'Designer' },
+    { key: R.SOCIAL_MEDIA_INTERN, label: 'Social Intern' },
+  ];
 
   function render() {
     const s = Store.getSettings();
@@ -29,7 +36,7 @@ const SettingsPage = (() => {
           <div class="form-group">
             <label class="form-label">Active Role</label>
             <select class="form-select" id="settings-role">
-              ${ROLES.map(r => `<option value="${r}" ${r === s.role ? 'selected' : ''}>${r}</option>`).join('')}
+              ${ROLE_LIST.map(r => `<option value="${r.key}" ${r.key === s.role ? 'selected' : ''}>${r.label}</option>`).join('')}
             </select>
           </div>
 
@@ -71,11 +78,11 @@ const SettingsPage = (() => {
 
   function _permissionChips(role) {
     const perms = {
-      'Admin': ['Full Access', 'Create Tasks', 'Edit Tasks', 'Approve', 'Upload', 'Manage Team', 'Export Data'],
-      'Marketing Director': ['Approve / Reject', 'Comment', 'View Overview'],
-      'Marketing Manager': ['Review Work', 'Edit Tasks', 'Submit Approvals', 'Upload Assets', 'Comment'],
-      'Graphic Designer': ['View Assigned Tasks', 'Advance Status', 'Upload Files'],
-      'Social Media Manager': ['View Content Tasks', 'Advance Status', 'Upload Media'],
+      [R.ADMIN]: ['Full Access', 'Create Tasks', 'Edit Tasks', 'Approve', 'Upload', 'Manage Team', 'Export Data'],
+      [R.DIRECTOR]: ['Approve / Reject', 'Comment', 'View Overview'],
+      [R.MANAGER]: ['Review Work', 'Edit Tasks', 'Submit Approvals', 'Upload Assets', 'Comment'],
+      [R.DESIGNER]: ['View Assigned Tasks', 'Advance Status', 'Upload Files'],
+      [R.SOCIAL_MEDIA_INTERN]: ['View Content Tasks', 'Advance Status', 'Upload Media'],
     }[role] || [];
     return perms.map(p => `<span class="chip chip-role" style="font-size:0.65rem">${p}</span>`).join('');
   }

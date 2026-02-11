@@ -27,7 +27,7 @@ const TaskViewPage = (() => {
     _attachments = t.attachments || [];
     const settings = Store.getSettings();
     const isOwner = t.assignee === settings.name;
-    const isManager = ['Admin', 'Marketing Manager'].includes(settings.role);
+    const isManager = ['ADMIN', 'MANAGER'].includes(settings.role);
     const canAdvance = Store.Permissions.can('advance_task') && (isOwner || isManager);
     const canEdit = Store.Permissions.can('edit_task');
     const isEditable = t.status !== 'published';
@@ -179,7 +179,7 @@ const TaskViewPage = (() => {
     // Only task owner or Admin/Manager can advance
     const settings = Store.getSettings();
     const isOwner = t.assignee === settings.name;
-    const isManager = ['Admin', 'Marketing Manager'].includes(settings.role);
+    const isManager = ['ADMIN', 'MANAGER'].includes(settings.role);
     if (!isOwner && !isManager) return;
 
     // If moving from draft → progress, save any editable fields first

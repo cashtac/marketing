@@ -12,8 +12,20 @@
 const Store = (() => {
 
   /* ═══ Seed Version — bump to force reseed ═══ */
-  const VERSION = '2026-02-11-v1';
+  const VERSION = '2026-02-11-v3';
   const VERSION_KEY = 'ims_seed_version';
+
+  /* ═══ Role Constants ═══ */
+  const ROLES = {
+    ADMIN: 'ADMIN',
+    DIRECTOR: 'DIRECTOR',
+    MANAGER: 'MANAGER',
+    DESIGNER: 'DESIGNER',
+    SOCIAL_MEDIA_INTERN: 'SOCIAL_MEDIA_INTERN',
+  };
+  const ALL_ROLES = Object.values(ROLES);
+  const MARKETING_TEAM = [...ALL_ROLES];                             // everyone
+  const LEADERSHIP     = [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER]; // restricted
 
   /* ═══ API Adapter Config ═══ */
   const API_ENABLED = false;
@@ -79,8 +91,8 @@ const Store = (() => {
   // API: GET /api/settings · PUT /api/settings
   function getSettings() {
     return _get(KEYS.settings) || {
-      role: 'Admin',
-      name: 'You',
+      role: 'ADMIN',
+      name: 'Daniil Osipov',
       avatar: ''
     };
   }
@@ -426,14 +438,29 @@ const Store = (() => {
     _set(KEYS.activity, feed);
   }
 
-  /* ── Comments (Instagram-style event comments) ── */
+  /* ── Comments (Instagram-style event comments with RBAC visibility) ── */
   function getComments() { return _get(KEYS.comments) || []; }
   function saveComments(c) { _set(KEYS.comments, c); }
   function getEventComments(eventId) {
     return getComments().filter(c => c.eventId === eventId);
   }
-  function addComment({ eventId, userId, text, mentions }) {
+  /** Return only comments the current user role can see */
+  function getVisibleEventComments(eventId) {
+    const role = getSettings().role;
+    const userId = _currentUserId();
+    return getEventComments(eventId).filter(c => _canViewComment(role, userId, c.visibility));
+  }
+  /** Total hidden count for UI indicator */
+  function getHiddenCommentCount(eventId) {
+    const all = getEventComments(eventId).length;
+    const visible = getVisibleEventComments(eventId).length;
+    return all - visible;
+  }
+  function addComment({ eventId, userId, text, mentions, visibility }) {
     const comments = getComments();
+    /* Default visibility based on commenter role */
+    const commenterRole = _roleForUserId(userId);
+    const vis = visibility || _defaultVisibility(commenterRole);
     const comment = {
       id: _id(),
       eventId,
@@ -441,6 +468,7 @@ const Store = (() => {
       text,
       createdAt: _now(),
       mentions: mentions || [],
+      visibility: vis,
     };
     comments.push(comment);
     saveComments(comments);
@@ -449,6 +477,52 @@ const Store = (() => {
   }
   function deleteComment(id) {
     saveComments(getComments().filter(c => c.id !== id));
+  }
+
+  /* ── Visibility helpers ── */
+  function _roleForUserId(userId) {
+    const u = (getTeam() || []).find(m => m.id === userId);
+    return u ? u.role : ROLES.DESIGNER;
+  }
+  function _currentUserId() {
+    const s = getSettings();
+    const team = getTeam() || [];
+    const u = team.find(m => m.fullName === s.name || m.username === s.username) || team[0];
+    return u ? u.id : '';
+  }
+  function _defaultVisibility(role) {
+    if (role === ROLES.DIRECTOR) return { mode: 'roles', rolesAllowed: [...LEADERSHIP], usersAllowed: [] };
+    // All other roles: visible to full marketing team
+    return { mode: 'roles', rolesAllowed: [...MARKETING_TEAM], usersAllowed: [] };
+  }
+  function _canViewComment(currentRole, currentUserId, vis) {
+    if (!vis) return true; // legacy comments without visibility → show
+    if (currentRole === ROLES.ADMIN) return true; // admin sees everything
+    if (vis.mode === 'private') return (vis.usersAllowed || []).includes(currentUserId);
+    if (vis.mode === 'participants') return (vis.usersAllowed || []).includes(currentUserId);
+    return (vis.rolesAllowed || ALL_ROLES).includes(currentRole);
+  }
+  /** Visibility presets for the composer dropdown, based on commenter role */
+  function getVisibilityPresets(role) {
+    const presets = [];
+    const team = MARKETING_TEAM;
+    if (role === ROLES.ADMIN) {
+      presets.push({ label: 'Marketing Team', mode: 'roles', rolesAllowed: [...team], usersAllowed: [] });
+      presets.push({ label: 'Leadership Only', mode: 'roles', rolesAllowed: [...LEADERSHIP], usersAllowed: [] });
+      presets.push({ label: 'Design Only',    mode: 'roles', rolesAllowed: [ROLES.ADMIN, ROLES.MANAGER, ROLES.DESIGNER], usersAllowed: [] });
+      presets.push({ label: 'Social Only',    mode: 'roles', rolesAllowed: [ROLES.ADMIN, ROLES.MANAGER, ROLES.SOCIAL_MEDIA_INTERN], usersAllowed: [] });
+    } else if (role === ROLES.DIRECTOR) {
+      presets.push({ label: 'Leadership Only', mode: 'roles', rolesAllowed: [...LEADERSHIP], usersAllowed: [] });
+    } else if (role === ROLES.MANAGER) {
+      presets.push({ label: 'Marketing Team',  mode: 'roles', rolesAllowed: [...team], usersAllowed: [] });
+      presets.push({ label: 'Leadership Only', mode: 'roles', rolesAllowed: [...LEADERSHIP], usersAllowed: [] });
+    } else {
+      // DESIGNER / SOCIAL_MEDIA_INTERN
+      presets.push({ label: 'Marketing Team', mode: 'roles', rolesAllowed: [...team], usersAllowed: [] });
+    }
+    // Everyone can do private
+    presets.push({ label: 'Private (me only)', mode: 'private', rolesAllowed: [], usersAllowed: [] });
+    return presets;
   }
 
   /* ── Status helpers ── */
@@ -508,7 +582,7 @@ const Store = (() => {
                 id: _id(),
                 title: `Remove expired placement: ${pl.name}`,
                 description: `Campaign "${pl.campaignName || 'Unknown'}" has expired at "${loc.name} › ${zone.name}". Physical media should be removed or replaced.`,
-                assignee: 'Admin',
+                assignee: 'Daniil Osipov',
                 status: 'draft',
                 priority: 'high',
                 dueDate: effectiveRemoval,
@@ -547,7 +621,7 @@ const Store = (() => {
               id: _id(),
               title: `Verify placement: ${pl.name}`,
               description: `Placement "${pl.name}" at "${loc.name} › ${zone.name}" has not been verified in over 14 days. Please physically verify the placement is correct.`,
-              assignee: 'Admin',
+              assignee: 'Daniil Osipov',
               status: 'draft',
               priority: 'medium',
               dueDate: dueDate.toISOString().slice(0, 10),
@@ -569,6 +643,14 @@ const Store = (() => {
   }
   /* ── Seed data ── */
   function seed() {
+    // ?reset=1 URL param forces full reseed
+    if (new URLSearchParams(window.location.search).get('reset') === '1') {
+      clearAll();
+      // strip param to avoid infinite resets
+      const url = new URL(window.location);
+      url.searchParams.delete('reset');
+      window.history.replaceState({}, '', url);
+    }
     // Versioned seed: if version mismatch, clear and reseed
     const storedVersion = localStorage.getItem(VERSION_KEY);
     if (storedVersion === VERSION && _get(KEYS.team)) return; // already seeded with current version
@@ -576,43 +658,44 @@ const Store = (() => {
     localStorage.setItem(VERSION_KEY, VERSION);
 
     const team = [
-      { id: 'user-alex', name: 'Alex Rivera', role: 'Marketing Director', avatar: '' },
-      { id: 'user-jordan', name: 'Jordan Lee', role: 'Marketing Manager', avatar: '' },
-      { id: 'user-sam', name: 'Sam Chen', role: 'Graphic Designer', avatar: '' },
-      { id: 'user-taylor', name: 'Taylor Kim', role: 'Graphic Designer', avatar: '' },
-      { id: 'user-morgan', name: 'Morgan Ellis', role: 'Social Media Manager', avatar: '' },
+      { id: 'usr_sofya_vetrova',  fullName: 'Sofya Vetrova',  name: 'Sofya Vetrova',  role: ROLES.DIRECTOR,             username: 'sofya',  avatarInitials: 'SV' },
+      { id: 'usr_katie_kennedy',  fullName: 'Katie Kennedy',  name: 'Katie Kennedy',  role: ROLES.MANAGER,              username: 'katie',  avatarInitials: 'KK' },
+      { id: 'usr_anna_simakova',  fullName: 'Anna Simakova',  name: 'Anna Simakova',  role: ROLES.DESIGNER,             username: 'anna',   avatarInitials: 'AS' },
+      { id: 'usr_dc',             fullName: 'DC',             name: 'DC',             role: ROLES.DESIGNER,             username: 'dc',     avatarInitials: 'DC' },
+      { id: 'usr_masha_alieva',   fullName: 'Masha Alieva',   name: 'Masha Alieva',   role: ROLES.SOCIAL_MEDIA_INTERN,  username: 'masha',  avatarInitials: 'MA' },
+      { id: 'usr_daniil_osipov',  fullName: 'Daniil Osipov',  name: 'Daniil Osipov',  role: ROLES.ADMIN,                username: 'daniil', avatarInitials: 'DO' },
     ];
     saveTeam(team);
 
     const tasks = [
-      { id: 'task-spring-banners', title: 'Design Spring Campaign Banners', description: 'Create a set of digital banners for the spring product launch. Sizes needed: 1200×628 (Facebook), 1080×1080 (Instagram), 728×90 (web).', context: 'Spring launch is our biggest Q1 revenue driver. These banners will run across all paid channels starting Feb 25.', deliverables: '3 banner sizes in PNG + editable PSD\nColor palette aligned with spring brand guide\nMobile-optimized variants', assignee: 'Sam Chen', status: 'progress', priority: 'high', dueDate: '2026-02-20', attachments: [], createdAt: _now() },
-      { id: 'task-q1-analytics', title: 'Review Q1 Analytics Report', description: 'Compile marketing metrics from all Q1 campaigns including paid, organic, and email channels.', context: 'Leadership needs this for the quarterly board meeting. Data informs next quarter budget allocation.', deliverables: 'PDF report with executive summary\nChannel-by-channel breakdown\nTop 5 recommendations', assignee: 'Jordan Lee', status: 'review', priority: 'medium', dueDate: '2026-02-15', attachments: [], createdAt: _now() },
-      { id: 'task-social-w8', title: 'Schedule Social Posts — Week 8', description: 'Plan and schedule all social media content for next week across Instagram, Twitter, and LinkedIn.', context: 'Consistent posting schedule maintains engagement momentum. Gap in posts last week caused 15% reach drop.', deliverables: 'Content calendar spreadsheet\nAll post copy + hashtags\nScheduled in Buffer/Hootsuite', assignee: 'Morgan Ellis', status: 'draft', priority: 'medium', dueDate: '2026-02-18', attachments: [], createdAt: _now() },
-      { id: 'task-brand-guide', title: 'Update Brand Guidelines PDF', description: 'Incorporate new logo variants, updated typography, and color additions into the brand book.', context: 'Outdated guidelines are causing inconsistent brand usage across teams. Legal flagged this as a priority.', deliverables: 'Updated brand book PDF\nNew logo asset package (SVG + PNG)\nTypography specimen sheet', assignee: 'Taylor Kim', status: 'draft', priority: 'low', dueDate: '2026-02-28', attachments: [], createdAt: _now() },
-      { id: 'task-email-redesign', title: 'Email Template Redesign', description: 'Modernize transactional email templates with new brand system.', context: 'Current templates have 12% lower open rate than industry average. Redesign should improve engagement.', deliverables: 'HTML email templates (responsive)\nPreview screenshots', assignee: 'Sam Chen', status: 'published', priority: 'high', dueDate: '2026-02-10', attachments: [], createdAt: _now() },
+      { id: 'task-spring-banners', title: 'Design Spring Campaign Banners', description: 'Create a set of digital banners for the spring product launch. Sizes needed: 1200×628 (Facebook), 1080×1080 (Instagram), 728×90 (web).', context: 'Spring launch is our biggest Q1 revenue driver. These banners will run across all paid channels starting Feb 25.', deliverables: '3 banner sizes in PNG + editable PSD\nColor palette aligned with spring brand guide\nMobile-optimized variants', assignee: 'Anna Simakova', status: 'progress', priority: 'high', dueDate: '2026-02-20', attachments: [], createdAt: _now() },
+      { id: 'task-q1-analytics', title: 'Review Q1 Analytics Report', description: 'Compile marketing metrics from all Q1 campaigns including paid, organic, and email channels.', context: 'Leadership needs this for the quarterly board meeting. Data informs next quarter budget allocation.', deliverables: 'PDF report with executive summary\nChannel-by-channel breakdown\nTop 5 recommendations', assignee: 'Katie Kennedy', status: 'review', priority: 'medium', dueDate: '2026-02-15', attachments: [], createdAt: _now() },
+      { id: 'task-social-w8', title: 'Schedule Social Posts — Week 8', description: 'Plan and schedule all social media content for next week across Instagram, Twitter, and LinkedIn.', context: 'Consistent posting schedule maintains engagement momentum. Gap in posts last week caused 15% reach drop.', deliverables: 'Content calendar spreadsheet\nAll post copy + hashtags\nScheduled in Buffer/Hootsuite', assignee: 'Masha Alieva', status: 'draft', priority: 'medium', dueDate: '2026-02-18', attachments: [], createdAt: _now() },
+      { id: 'task-brand-guide', title: 'Update Brand Guidelines PDF', description: 'Incorporate new logo variants, updated typography, and color additions into the brand book.', context: 'Outdated guidelines are causing inconsistent brand usage across teams. Legal flagged this as a priority.', deliverables: 'Updated brand book PDF\nNew logo asset package (SVG + PNG)\nTypography specimen sheet', assignee: 'DC', status: 'draft', priority: 'low', dueDate: '2026-02-28', attachments: [], createdAt: _now() },
+      { id: 'task-email-redesign', title: 'Email Template Redesign', description: 'Modernize transactional email templates with new brand system.', context: 'Current templates have 12% lower open rate than industry average. Redesign should improve engagement.', deliverables: 'HTML email templates (responsive)\nPreview screenshots', assignee: 'Anna Simakova', status: 'published', priority: 'high', dueDate: '2026-02-10', attachments: [], createdAt: _now() },
     ];
     saveTasks(tasks);
 
     const approvals = [
-      { id: 'appr-spring-deck', title: 'Spring Campaign Concept Deck', submittedBy: 'Jordan Lee', description: '12-slide concept deck covering creative direction, target audience, and channel strategy for the spring product launch.', previewType: 'document', context: 'Needed before Feb 25 launch. Budget already allocated.', status: 'pending', approval_stage: 'manager_review', createdAt: _now(), comments: [] },
-      { id: 'appr-insta-reel', title: 'New Instagram Reel Script', submittedBy: 'Morgan Ellis', description: '30-second product showcase reel. Script covers hook, feature highlights, and CTA.', previewType: 'video', context: 'Part of weekly content calendar. Scheduled to post Thursday.', status: 'pending', approval_stage: 'admin_review', createdAt: _now(), comments: [] },
-      { id: 'appr-hero-banner', title: 'Homepage Hero Banner v2', submittedBy: 'Sam Chen', description: 'Revised 1440×600 hero banner with updated spring color palette and new headline copy.', previewType: 'image', context: 'Replaces current outdated banner. A/B test ready.', status: 'approved', approval_stage: 'approved', createdAt: _now(), comments: [] },
+      { id: 'appr-spring-deck', title: 'Spring Campaign Concept Deck', submittedBy: 'Katie Kennedy', description: '12-slide concept deck covering creative direction, target audience, and channel strategy for the spring product launch.', previewType: 'document', context: 'Needed before Feb 25 launch. Budget already allocated.', status: 'pending', approval_stage: 'manager_review', createdAt: _now(), comments: [] },
+      { id: 'appr-insta-reel', title: 'New Instagram Reel Script', submittedBy: 'Masha Alieva', description: '30-second product showcase reel. Script covers hook, feature highlights, and CTA.', previewType: 'video', context: 'Part of weekly content calendar. Scheduled to post Thursday.', status: 'pending', approval_stage: 'admin_review', createdAt: _now(), comments: [] },
+      { id: 'appr-hero-banner', title: 'Homepage Hero Banner v2', submittedBy: 'Anna Simakova', description: 'Revised 1440×600 hero banner with updated spring color palette and new headline copy.', previewType: 'image', context: 'Replaces current outdated banner. A/B test ready.', status: 'approved', approval_stage: 'approved', createdAt: _now(), comments: [] },
     ];
     saveApprovals(approvals);
 
     const activities = [
       { text: 'Email Template Redesign marked done', time: _now() },
       { text: 'Spring Campaign Concept Deck submitted for approval', time: _now() },
-      { text: 'Sam Chen started Spring Campaign Banners', time: _now() },
+      { text: 'Anna Simakova started Spring Campaign Banners', time: _now() },
     ];
     _set(KEYS.activity, activities);
 
     const assets = [
-      { id: 'asset-spring-poster', name: 'Spring Launch Poster', format: 'poster_22x28', usage: 'Lobby display boards, event entrance', status: 'draft', owner: 'Sam Chen', description: 'Large-format poster for spring product launch event', createdAt: _now(), createdBy: 'Jordan Lee', attachments: [] },
-      { id: 'asset-q1-onepager', name: 'Q1 Results One-Pager', format: 'us_letter', usage: 'Stakeholder handouts, email attachment', status: 'review', owner: 'Jordan Lee', description: 'Summary of Q1 marketing results for leadership review', createdAt: _now(), createdBy: 'Jordan Lee', attachments: [] },
-      { id: 'asset-spring-promo', name: 'Spring Promo — Instagram', format: 'social_media', usage: 'Instagram feed, Facebook, LinkedIn', status: 'approved', owner: 'Morgan Ellis', description: '1080×1080 promotional graphic for spring campaign social push', createdAt: _now(), createdBy: 'Sam Chen', attachments: [] },
-      { id: 'asset-cafe-board', name: 'Cafeteria Event Board', format: 'event_board', usage: 'Digital screens in cafeteria and common areas', status: 'draft', owner: 'Taylor Kim', description: 'Rotating event display for upcoming spring launch party', createdAt: _now(), createdBy: 'Jordan Lee', attachments: [] },
-      { id: 'asset-lobby-screen', name: 'Lobby Welcome Screen', format: 'digital_screen', usage: 'Lobby digital signage, reception area', status: 'review', owner: 'Sam Chen', description: '1920×1080 welcome display with brand messaging', createdAt: _now(), createdBy: 'Jordan Lee', attachments: [] },
+      { id: 'asset-spring-poster', name: 'Spring Launch Poster', format: 'poster_22x28', usage: 'Lobby display boards, event entrance', status: 'draft', owner: 'Anna Simakova', description: 'Large-format poster for spring product launch event', createdAt: _now(), createdBy: 'Katie Kennedy', attachments: [] },
+      { id: 'asset-q1-onepager', name: 'Q1 Results One-Pager', format: 'us_letter', usage: 'Stakeholder handouts, email attachment', status: 'review', owner: 'Katie Kennedy', description: 'Summary of Q1 marketing results for leadership review', createdAt: _now(), createdBy: 'Katie Kennedy', attachments: [] },
+      { id: 'asset-spring-promo', name: 'Spring Promo — Instagram', format: 'social_media', usage: 'Instagram feed, Facebook, LinkedIn', status: 'approved', owner: 'Masha Alieva', description: '1080×1080 promotional graphic for spring campaign social push', createdAt: _now(), createdBy: 'Anna Simakova', attachments: [] },
+      { id: 'asset-cafe-board', name: 'Cafeteria Event Board', format: 'event_board', usage: 'Digital screens in cafeteria and common areas', status: 'draft', owner: 'DC', description: 'Rotating event display for upcoming spring launch party', createdAt: _now(), createdBy: 'Katie Kennedy', attachments: [] },
+      { id: 'asset-lobby-screen', name: 'Lobby Welcome Screen', format: 'digital_screen', usage: 'Lobby digital signage, reception area', status: 'review', owner: 'Anna Simakova', description: '1920×1080 welcome display with brand messaging', createdAt: _now(), createdBy: 'Katie Kennedy', attachments: [] },
     ];
     saveAssets(assets);
 
@@ -790,16 +873,18 @@ const Store = (() => {
     ];
     saveContent(contentItems);
 
-    /* Seed demo comments on events */
+    /* Seed demo comments on events with RBAC visibility */
     const seedComments = [
-      { id: 'comment-1', eventId: 'camp-casino-night', userId: 'user-jordan', text: 'Need to finalize the QR code design by Feb 20. @Sam Chen can you prep the artwork?', createdAt: '2026-02-10T14:30:00Z', mentions: ['user-sam'] },
-      { id: 'comment-2', eventId: 'camp-casino-night', userId: 'user-sam', text: 'On it! Draft will be ready by EOD Thursday.', createdAt: '2026-02-10T15:05:00Z', mentions: [] },
-      { id: 'comment-3', eventId: 'camp-delight', userId: 'user-morgan', text: 'I\'ll handle the social teasers for this. @Jordan Lee should we do countdown posts?', createdAt: '2026-02-11T09:00:00Z', mentions: ['user-jordan'] },
-      { id: 'comment-4', eventId: 'camp-spring-2026', userId: 'user-alex', text: 'Great progress on the banners. Let\'s make sure all locations have updated materials by Feb 25.', createdAt: '2026-02-09T11:20:00Z', mentions: [] },
+      { id: 'comment-1', eventId: 'camp-casino-night', userId: 'usr_katie_kennedy', text: 'Need to finalize the QR code design by Feb 20. @anna can you prep the artwork?', createdAt: '2026-02-10T14:30:00Z', mentions: ['usr_anna_simakova'], visibility: { mode: 'roles', rolesAllowed: [...MARKETING_TEAM], usersAllowed: [] } },
+      { id: 'comment-2', eventId: 'camp-casino-night', userId: 'usr_anna_simakova', text: 'On it! Draft will be ready by EOD Thursday.', createdAt: '2026-02-10T15:05:00Z', mentions: [], visibility: { mode: 'roles', rolesAllowed: [...MARKETING_TEAM], usersAllowed: [] } },
+      { id: 'comment-3', eventId: 'camp-casino-night', userId: 'usr_sofya_vetrova', text: 'Budget approved for upgraded decorations. @katie coordinate with the venue.', createdAt: '2026-02-10T16:00:00Z', mentions: ['usr_katie_kennedy'], visibility: { mode: 'roles', rolesAllowed: [...LEADERSHIP], usersAllowed: [] } },
+      { id: 'comment-4', eventId: 'camp-delight', userId: 'usr_masha_alieva', text: 'I\'ll handle the social teasers for this. @katie should we do countdown posts?', createdAt: '2026-02-11T09:00:00Z', mentions: ['usr_katie_kennedy'], visibility: { mode: 'roles', rolesAllowed: [...MARKETING_TEAM], usersAllowed: [] } },
+      { id: 'comment-5', eventId: 'camp-spring-2026', userId: 'usr_daniil_osipov', text: 'Great progress on the banners. Let\'s make sure all locations have updated materials by Feb 25.', createdAt: '2026-02-09T11:20:00Z', mentions: [], visibility: { mode: 'roles', rolesAllowed: [...MARKETING_TEAM], usersAllowed: [] } },
+      { id: 'comment-6', eventId: 'camp-spring-2026', userId: 'usr_sofya_vetrova', text: 'Internal note: Budget is tight. Prioritize digital placements over print.', createdAt: '2026-02-09T12:00:00Z', mentions: [], visibility: { mode: 'roles', rolesAllowed: [...LEADERSHIP], usersAllowed: [] } },
     ];
     saveComments(seedComments);
 
-    saveSettings({ role: 'Admin', name: 'You', avatar: '' });
+    saveSettings({ role: ROLES.ADMIN, name: 'Daniil Osipov', username: 'daniil', avatar: '' });
   }
 
   /* ── Clear all ── */
@@ -812,11 +897,11 @@ const Store = (() => {
   const Permissions = {
     /*  Which pages each role can see  */
     pages: {
-      'Admin':                  ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','settings'],
-      'Marketing Director':     ['dashboard','approvals','content','campaigns','locations','settings'],
-      'Marketing Manager':      ['dashboard','tasks','approvals','assets','content','campaigns','locations','settings'],
-      'Graphic Designer':       ['dashboard','tasks','assets','content','locations','settings'],
-      'Social Media Manager':   ['dashboard','tasks','assets','content','locations','settings'],
+      [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','settings'],
+      [ROLES.DIRECTOR]:             ['dashboard','approvals','content','campaigns','locations','settings'],
+      [ROLES.MANAGER]:              ['dashboard','tasks','approvals','assets','content','campaigns','locations','settings'],
+      [ROLES.DESIGNER]:             ['dashboard','tasks','assets','content','locations','settings'],
+      [ROLES.SOCIAL_MEDIA_INTERN]:  ['dashboard','tasks','assets','content','locations','settings'],
     },
 
     /*  Action capabilities per role  */
@@ -824,40 +909,43 @@ const Store = (() => {
       const role = getSettings().role;
       const matrix = {
         /* Task actions */
-        'create_task':       ['Admin'],
-        'edit_task':         ['Admin', 'Marketing Manager'],
-        'delete_task':       ['Admin'],
-        'advance_task':      ['Admin', 'Marketing Manager', 'Graphic Designer', 'Social Media Manager'],
+        'create_task':       [ROLES.ADMIN],
+        'edit_task':         [ROLES.ADMIN, ROLES.MANAGER],
+        'delete_task':       [ROLES.ADMIN],
+        'advance_task':      [ROLES.ADMIN, ROLES.MANAGER, ROLES.DESIGNER, ROLES.SOCIAL_MEDIA_INTERN],
 
         /* Approval actions */
-        'approve':           ['Admin', 'Marketing Director'],
-        'request_changes':   ['Admin', 'Marketing Director'],
-        'submit_approval':   ['Admin', 'Marketing Manager'],
-        'comment_approval':  ['Admin', 'Marketing Director', 'Marketing Manager'],
+        'approve':           [ROLES.ADMIN, ROLES.DIRECTOR],
+        'request_changes':   [ROLES.ADMIN, ROLES.DIRECTOR],
+        'submit_approval':   [ROLES.ADMIN, ROLES.MANAGER],
+        'comment_approval':  [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER],
 
         /* Asset actions */
-        'create_asset':      ['Admin', 'Marketing Manager'],
-        'edit_asset':        ['Admin', 'Marketing Manager'],
-        'delete_asset':      ['Admin'],
+        'create_asset':      [ROLES.ADMIN, ROLES.MANAGER],
+        'edit_asset':        [ROLES.ADMIN, ROLES.MANAGER],
+        'delete_asset':      [ROLES.ADMIN],
 
         /* Location actions */
-        'manage_locations':  ['Admin', 'Marketing Manager'],
-        'assign_content':    ['Admin', 'Marketing Manager', 'Graphic Designer', 'Social Media Manager'],
+        'manage_locations':  [ROLES.ADMIN, ROLES.MANAGER],
+        'assign_content':    [ROLES.ADMIN, ROLES.MANAGER, ROLES.DESIGNER, ROLES.SOCIAL_MEDIA_INTERN],
 
         /* Campaign actions */
-        'manage_campaigns':  ['Admin', 'Marketing Manager'],
+        'manage_campaigns':  [ROLES.ADMIN, ROLES.MANAGER],
 
         /* Content actions */
-        'create_content':    ['Admin', 'Marketing Manager', 'Social Media Manager'],
-        'edit_content':      ['Admin', 'Marketing Manager', 'Social Media Manager'],
-        'delete_content':    ['Admin'],
+        'create_content':    [ROLES.ADMIN, ROLES.MANAGER, ROLES.SOCIAL_MEDIA_INTERN],
+        'edit_content':      [ROLES.ADMIN, ROLES.MANAGER, ROLES.SOCIAL_MEDIA_INTERN],
+        'delete_content':    [ROLES.ADMIN],
+
+        /* Comment visibility */
+        'post_restricted':   [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER],
 
         /* Team management */
-        'manage_team':       ['Admin'],
+        'manage_team':       [ROLES.ADMIN],
 
         /* Settings */
-        'export_data':       ['Admin'],
-        'clear_data':        ['Admin'],
+        'export_data':       [ROLES.ADMIN],
+        'clear_data':        [ROLES.ADMIN],
       };
       return (matrix[action] || []).includes(role);
     },
@@ -866,6 +954,18 @@ const Store = (() => {
     canAccessPage(page) {
       const role = getSettings().role;
       return (this.pages[role] || []).includes(page);
+    },
+
+    /*  Can current user view a specific comment?  */
+    canViewComment(commentVisibility) {
+      const role = getSettings().role;
+      const userId = _currentUserId();
+      return _canViewComment(role, userId, commentVisibility);
+    },
+
+    /*  Can current user post a restricted comment?  */
+    canPostRestrictedComment() {
+      return this.can('post_restricted');
     },
 
     /*  Which pages the current role can see  */
@@ -878,7 +978,7 @@ const Store = (() => {
     filterTasks(tasks) {
       const role = getSettings().role;
       const name = getSettings().name;
-      if (role === 'Admin' || role === 'Marketing Manager') return tasks;
+      if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return tasks;
       // Designers & SMM see only their assigned tasks
       return tasks.filter(t => t.assignee === name);
     },
@@ -887,9 +987,9 @@ const Store = (() => {
     filterApprovals(approvals) {
       const role = getSettings().role;
       const name = getSettings().name;
-      if (role === 'Admin' || role === 'Marketing Director') return approvals;
+      if (role === ROLES.ADMIN || role === ROLES.DIRECTOR) return approvals;
       // Manager sees all (they submit); designers/SMM see only their own
-      if (role === 'Marketing Manager') return approvals;
+      if (role === ROLES.MANAGER) return approvals;
       return approvals.filter(a => a.submittedBy === name);
     },
 
@@ -897,7 +997,7 @@ const Store = (() => {
     filterAssets(assets) {
       const role = getSettings().role;
       const name = getSettings().name;
-      if (role === 'Admin' || role === 'Marketing Manager' || role === 'Marketing Director') return assets;
+      if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return assets;
       return assets.filter(a => a.owner === name);
     },
 
@@ -905,7 +1005,7 @@ const Store = (() => {
     filterContent(content) {
       const role = getSettings().role;
       const name = getSettings().name;
-      if (role === 'Admin' || role === 'Marketing Manager' || role === 'Marketing Director') return content;
+      if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return content;
       return content.filter(c => c.assignee === name);
     },
 
@@ -921,11 +1021,11 @@ const Store = (() => {
         { page: 'settings',  icon: '⚙️', label: 'Settings' },
       ];
       const map = {
-        'Admin':                  ['assets','content','campaigns','approvals','team','settings'],
-        'Marketing Director':     ['content','campaigns','approvals','settings'],
-        'Marketing Manager':      ['assets','content','campaigns','settings'],
-        'Graphic Designer':       ['assets','content','settings'],
-        'Social Media Manager':   ['content','settings'],
+        [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','team','settings'],
+        [ROLES.DIRECTOR]:             ['content','campaigns','approvals','settings'],
+        [ROLES.MANAGER]:              ['assets','content','campaigns','settings'],
+        [ROLES.DESIGNER]:             ['assets','content','settings'],
+        [ROLES.SOCIAL_MEDIA_INTERN]:  ['content','settings'],
       };
       const allowed = map[role] || ['settings'];
       return ALL.filter(i => allowed.includes(i.page));
@@ -938,7 +1038,7 @@ const Store = (() => {
   };
 
   return {
-    VERSION,
+    VERSION, ROLES, ALL_ROLES,
     getSettings, saveSettings,
     getTeam, saveTeam, addTeamMember, updateTeamMember, deleteTeamMember,
     getTasks, saveTasks, addTask, updateTask, deleteTask,
@@ -952,7 +1052,8 @@ const Store = (() => {
     getCampaigns, saveCampaigns, addCampaign, updateCampaign, deleteCampaign, getUpcomingEvents,
     getDisplayUnits, saveDisplayUnits, addDisplayUnit, updateDisplayUnit, deleteDisplayUnit,
     getActivity, addActivity,
-    getComments, getEventComments, addComment, deleteComment,
+    getComments, getEventComments, getVisibleEventComments, getHiddenCommentCount,
+    addComment, deleteComment, getVisibilityPresets,
     nextStatus, prevStatus, STATUS_ORDER,
     Permissions,
     seed, clearAll, checkExpiryAndCreateTasks,

@@ -224,11 +224,11 @@ const DashboardPage = (() => {
 
   function _roleHint(role) {
     return {
-      'Admin': 'Full system overview',
-      'Marketing Director': 'Items awaiting your approval',
-      'Marketing Manager': 'Tasks and approvals to manage',
-      'Graphic Designer': 'Your design assignments',
-      'Social Media Manager': 'Your content responsibilities',
+      'ADMIN': 'Full system overview',
+      'DIRECTOR': 'Items awaiting your approval',
+      'MANAGER': 'Tasks and approvals to manage',
+      'DESIGNER': 'Your design assignments',
+      'SOCIAL_MEDIA_INTERN': 'Your content responsibilities',
     }[role] || '';
   }
 

@@ -124,14 +124,30 @@ const CampaignsPage = (() => {
     const placements = _getCampaignPlacements(c.id);
     const canManage = Store.Permissions.can('manage_campaigns');
 
-    /* Comments */
-    const comments = Store.getEventComments(c.id);
+    /* Comments with RBAC visibility */
+    const visibleComments = Store.getVisibleEventComments(c.id);
+    const hiddenCount = Store.getHiddenCommentCount(c.id);
     const team = Store.getTeam();
-    const _userById = id => team.find(m => m.id === id) || { name: id, role: '' };
-    const _initials = name => (name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    const settings = Store.getSettings();
+    const currentRole = settings.role;
+    const _userById = id => team.find(m => m.id === id) || { name: id, fullName: id, role: '', username: '', avatarInitials: '??' };
+    const _initials = u => u.avatarInitials || (u.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
     const _highlightMentions = text => {
-      return _esc(text).replace(/@([A-Za-z]+(?:\s[A-Za-z]+)?)/g, '<span class="comment-mention">@$1</span>');
+      return _esc(text).replace(/@(\w+)/g, (match, uname) => {
+        const u = team.find(m => m.username === uname);
+        return `<span class="comment-mention">@${u ? _esc(u.fullName || u.name) : uname}</span>`;
+      });
     };
+    const _visLabel = vis => {
+      if (!vis) return '';
+      if (vis.mode === 'private') return '🔒 Private';
+      const r = vis.rolesAllowed || [];
+      if (r.length === Store.ALL_ROLES.length) return '👥 Team';
+      if (r.length <= 3 && r.includes('ADMIN') && r.includes('DIRECTOR') && r.includes('MANAGER')) return '🔐 Leadership';
+      return '👁️ Restricted';
+    };
+    /* Visibility presets for composer */
+    const presets = Store.getVisibilityPresets(currentRole);
 
     return `
       <div class="page active" id="page-campaigns">
@@ -173,20 +189,26 @@ const CampaignsPage = (() => {
 
         <!-- Comments Section -->
         <div class="card comment-section" style="padding:16px;margin-top:12px">
-          <div class="pd-section-label">💬 Comments (${comments.length})</div>
-          ${comments.length === 0 ? `
+          <div class="pd-section-label">💬 Comments (${visibleComments.length})</div>
+          ${hiddenCount > 0 ? `
+            <div class="comment-hidden-indicator">
+              <span>🔒</span> ${hiddenCount} comment${hiddenCount > 1 ? 's' : ''} hidden due to visibility settings.
+            </div>
+          ` : ''}
+          ${visibleComments.length === 0 ? `
             <div class="pd-empty-content" style="padding:12px 0">
               <div style="font-size:1.2rem;margin-bottom:4px">💬</div>
               <span style="font-size:0.78rem;color:var(--text-muted)">No comments yet. Be the first!</span>
             </div>
-          ` : comments.map(cm => {
+          ` : visibleComments.map(cm => {
             const u = _userById(cm.userId);
             return `
               <div class="comment-item">
-                <div class="comment-avatar">${_initials(u.name)}</div>
+                <div class="comment-avatar">${_initials(u)}</div>
                 <div class="comment-body">
                   <div class="comment-header">
-                    <span class="comment-author">${_esc(u.name)}</span>
+                    <span class="comment-author">${_esc(u.fullName || u.name)}</span>
+                    <span class="comment-vis-badge">${_visLabel(cm.visibility)}</span>
                     <span class="comment-time">${_timeAgo(cm.createdAt)}</span>
                   </div>
                   <div class="comment-text">${_highlightMentions(cm.text)}</div>
@@ -195,7 +217,13 @@ const CampaignsPage = (() => {
             `;
           }).join('')}
           <div class="comment-input-row">
-            <textarea id="comment-text" class="comment-textarea" placeholder="Add a comment… Use @name to mention" rows="2"></textarea>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+              <label style="font-size:0.7rem;font-weight:600;color:var(--text-muted);white-space:nowrap">Visible to:</label>
+              <select id="comment-visibility" class="comment-vis-select">
+                ${presets.map((p, i) => `<option value="${i}">${p.label}</option>`).join('')}
+              </select>
+            </div>
+            <textarea id="comment-text" class="comment-textarea" placeholder="Add a comment… Use @username to mention" rows="2"></textarea>
             <button class="btn btn-primary" style="padding:6px 14px;font-size:0.78rem;margin-top:6px;align-self:flex-end" onclick="CampaignsPage.postComment('${c.id}')">Post</button>
           </div>
         </div>
@@ -342,25 +370,38 @@ const CampaignsPage = (() => {
     const text = (textarea?.value || '').trim();
     if (!text) return;
 
-    /* Resolve @mentions to userIds */
+    /* Resolve @username mentions to userIds */
     const team = Store.getTeam();
     const mentions = [];
-    const mentionRegex = /@([A-Za-z]+(?:\s[A-Za-z]+)?)/g;
+    const mentionRegex = /@(\w+)/g;
     let match;
     while ((match = mentionRegex.exec(text)) !== null) {
-      const mentioned = team.find(m => m.name.toLowerCase().includes(match[1].toLowerCase()));
+      const mentioned = team.find(m => m.username === match[1].toLowerCase());
       if (mentioned && !mentions.includes(mentioned.id)) mentions.push(mentioned.id);
     }
 
     /* Use current user — resolve from settings */
     const settings = Store.getSettings();
-    const currentUser = team.find(m => m.name === settings.name) || team[0];
+    const currentUser = team.find(m => m.fullName === settings.name || m.username === settings.username) || team[0];
+
+    /* Get visibility from dropdown */
+    const visSelect = document.getElementById('comment-visibility');
+    const presetIdx = parseInt(visSelect?.value || '0', 10);
+    const presets = Store.getVisibilityPresets(settings.role);
+    let visibility = presets[presetIdx] || presets[0];
+    // For private, fill in current user
+    if (visibility.mode === 'private') {
+      visibility = { ...visibility, usersAllowed: [currentUser.id] };
+    }
+    // Strip the label before storing
+    const { label, ...vis } = visibility;
 
     Store.addComment({
       eventId: campaignId,
       userId: currentUser.id,
       text,
       mentions,
+      visibility: vis,
     });
 
     App.refresh();
