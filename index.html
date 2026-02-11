@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Internal Marketing System</title>
+  <meta name="description" content="Internal Marketing System — Organize responsibilities, tasks, approvals, and marketing assets." />
+  <link rel="stylesheet" href="css/design.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-icon">M</div>
+      <span>Marketing</span>
+    </div>
+    <span class="role-badge" id="role-badge">Admin</span>
+  </header>
+
+  <!-- Content -->
+  <main class="app-content" id="app-content"></main>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this) App.closeModal()">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h2 class="modal-title"></h2>
+      <div class="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-page="dashboard" onclick="App.navigate('dashboard')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="nav-item" data-page="tasks" onclick="App.navigate('tasks')">
+      <svg viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span>Tasks</span>
+    </button>
+    <button class="nav-item" data-page="approvals" onclick="App.navigate('approvals')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Approvals</span>
+    </button>
+    <button class="nav-item" data-page="assets" onclick="App.navigate('assets')">
+      <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      <span>Assets</span>
+    </button>
+    <button class="nav-item" data-page="content" onclick="App.navigate('content')">
+      <svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+      <span>Content</span>
+    </button>
+    <button class="nav-item" data-page="campaigns" onclick="App.navigate('campaigns')">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"/><polyline points="18 8 22 12 18 16"/><line x1="7" y1="12" x2="22" y2="12"/></svg>
+      <span>Campaigns</span>
+    </button>
+    <button class="nav-item" data-page="locations" onclick="App.navigate('locations')">
+      <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <span>Locations</span>
+    </button>
+    <button class="nav-item" data-page="team" onclick="App.navigate('team')">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Team</span>
+    </button>
+    <button class="nav-item" data-page="settings" onclick="App.navigate('settings')">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- Scripts -->
+  <script src="js/store.js"></script>
+  <script src="js/pages/dashboard.js"></script>
+  <script src="js/pages/tasks.js"></script>
+  <script src="js/pages/approvals.js"></script>
+  <script src="js/pages/assets.js"></script>
+  <script src="js/pages/content.js"></script>
+  <script src="js/pages/locations.js"></script>
+  <script src="js/pages/team.js"></script>
+  <script src="js/pages/settings.js"></script>
+  <script src="js/pages/taskview.js"></script>
+  <script src="js/pages/campaigns.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
