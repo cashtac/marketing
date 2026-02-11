@@ -1,132 +1,209 @@
-/* ─── Dashboard Page — "What am I responsible for right now?" ─── */
+/* ─── Dashboard Page — Smart home: insights, actions, overview ─── */
 const DashboardPage = (() => {
+
   function render() {
     const settings = Store.getSettings();
     const role = settings.role;
     const allTasks = Store.getTasks();
     const tasks = Store.Permissions.filterTasks(allTasks);
     const approvals = Store.Permissions.filterApprovals(Store.getApprovals());
+    const campaigns = Store.getCampaigns();
+    const locations = Store.getLocations();
 
-    // Only active responsibilities — not published
-    const activeTasks = tasks.filter(t => t.status !== 'published');
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+    const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    const threeDays = new Date(now); threeDays.setDate(threeDays.getDate() + 3);
+    const threeDaysStr = threeDays.toISOString().slice(0, 10);
+    const weekEnd = new Date(now); weekEnd.setDate(weekEnd.getDate() + 7);
+    const weekEndStr = weekEnd.toISOString().slice(0, 10);
+
+    // Overdue tasks
+    const overdueTasks = tasks.filter(t =>
+      t.status !== 'published' && t.dueDate && new Date(t.dueDate + 'T23:59:59') < now
+    );
+
+    // Pending approvals
     const pendingApprovals = approvals.filter(a => a.status === 'pending');
 
-    // Sort: high priority first, then by due date
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    activeTasks.sort((a, b) => {
-      const pDiff = (priorityOrder[a.priority] ?? 2) - (priorityOrder[b.priority] ?? 2);
-      if (pDiff !== 0) return pDiff;
-      if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
-      if (a.dueDate) return -1;
-      if (b.dueDate) return 1;
-      return 0;
+    // Tomorrow's events
+    const tomorrowEvents = campaigns.filter(c =>
+      c.type === 'event' && c.start_date && c.start_date === tomorrowStr
+    );
+
+    // Expiring placements (removal within 3 days)
+    const expiringPlacements = [];
+    locations.forEach(loc => {
+      (loc.zones || []).forEach(zone => {
+        (zone.placements || []).forEach(pl => {
+          if (pl.removal_date && pl.removal_date >= todayStr && pl.removal_date <= threeDaysStr && pl.status === 'active') {
+            expiringPlacements.push({ ...pl, locationName: loc.name, zoneName: zone.name });
+          }
+        });
+      });
     });
 
-    const greetHour = new Date().getHours();
+    // Week overview
+    const activeTasks = tasks.filter(t => t.status !== 'published');
+    const tasksDueThisWeek = tasks.filter(t =>
+      t.status !== 'published' && t.dueDate && t.dueDate >= todayStr && t.dueDate <= weekEndStr
+    );
+    const eventsThisWeek = campaigns.filter(c =>
+      c.type === 'event' && c.start_date && c.start_date >= todayStr && c.start_date <= weekEndStr
+    );
+
+    const greetHour = now.getHours();
     const greet = greetHour < 12 ? 'Good morning' : greetHour < 18 ? 'Good afternoon' : 'Good evening';
 
-    const totalResponsibilities = activeTasks.length + (Store.Permissions.canAccessPage('approvals') ? pendingApprovals.length : 0);
+    const totalUrgent = overdueTasks.length + pendingApprovals.length + expiringPlacements.length;
 
     return `
       <div class="page active" id="page-dashboard">
         <p class="page-subtitle" style="margin-bottom:2px">${greet},</p>
-        <h1 class="page-title" style="margin-bottom:6px">${_esc(settings.name)}</h1>
+        <h1 class="page-title" style="margin-bottom:8px">${_esc(settings.name)}</h1>
 
-        <div class="card card-pink" style="margin-bottom:20px;padding:16px 18px;display:flex;align-items:center;gap:14px">
-          <div style="font-size:1.8rem;line-height:1">${totalResponsibilities === 0 ? '✨' : '📌'}</div>
+        <!-- Attention banner -->
+        <div class="card ${totalUrgent > 0 ? 'card-pink' : ''}" style="margin-bottom:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
+          <div style="font-size:1.6rem;line-height:1">${totalUrgent === 0 ? '✨' : '📌'}</div>
           <div>
-            <div style="font-size:0.95rem;font-weight:600;color:var(--text)">
-              ${totalResponsibilities === 0 ? 'You\'re all clear' : `${totalResponsibilities} thing${totalResponsibilities !== 1 ? 's' : ''} need${totalResponsibilities === 1 ? 's' : ''} your attention`}
+            <div style="font-size:0.9rem;font-weight:600;color:var(--text)">
+              ${totalUrgent === 0 ? "You're all clear" : `${totalUrgent} urgent item${totalUrgent !== 1 ? 's' : ''}`}
             </div>
-            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px">${_roleHint(role)}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:1px">${_roleHint(role)}</div>
           </div>
         </div>
 
-        ${activeTasks.length > 0 ? `
-          <div class="section-header">
-            <span class="section-title">Your Tasks</span>
-            <span class="section-count">${activeTasks.length}</span>
-          </div>
-          ${activeTasks.map(t => _renderTaskCard(t)).join('')}
-        ` : ''}
-
-        ${Store.Permissions.canAccessPage('approvals') && pendingApprovals.length > 0 ? `
-          <div class="section-header" style="margin-top:${activeTasks.length ? '8' : '0'}px">
-            <span class="section-title">Awaiting Your Review</span>
-            <span class="section-count">${pendingApprovals.length}</span>
-          </div>
-          ${pendingApprovals.map(a => _renderApprovalCard(a)).join('')}
-        ` : ''}
-
-        ${totalResponsibilities === 0 ? `
-          <div class="empty-state" style="padding:50px 20px">
-            <div class="empty-state-icon">🎉</div>
-            <div class="empty-state-text">Nothing pending right now</div>
-            <p style="font-size:0.78rem;color:var(--text-light);margin-top:6px">All your responsibilities are completed</p>
-          </div>
-        ` : ''}
+        ${_renderOverdueTasks(overdueTasks)}
+        ${_renderExpiringPlacements(expiringPlacements)}
+        ${Store.Permissions.canAccessPage('approvals') ? _renderPendingApprovals(pendingApprovals) : ''}
+        ${_renderTomorrowEvents(tomorrowEvents)}
+        ${_renderWeekOverview(tasksDueThisWeek, eventsThisWeek, expiringPlacements, activeTasks)}
       </div>
     `;
   }
 
-  function _renderTaskCard(t) {
-    const chipClass = { draft: 'chip-todo', progress: 'chip-progress', review: 'chip-review', approved: 'chip-done', published: 'chip-done' }[t.status];
-    const statusLabel = { draft: 'Draft', progress: 'In Progress', review: 'Review', approved: 'Approved', published: 'Published' }[t.status];
-    const nextSt = Store.nextStatus(t.status);
-    const nextLabel = { draft: 'Start Work', progress: 'Submit for Review', review: 'Approve', approved: 'Publish', published: 'Published' }[nextSt];
-    const canAdvance = nextSt !== t.status && Store.Permissions.can('advance_task');
-    const isOverdue = t.dueDate && new Date(t.dueDate + 'T23:59:59') < new Date();
-
+  /* ── Overdue Tasks ── */
+  function _renderOverdueTasks(tasks) {
+    if (!tasks.length) return '';
     return `
-      <div class="card priority-${t.priority}" style="padding:16px 18px">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px">
-          <span class="task-title" style="flex:1">${_esc(t.title)}</span>
-          <span class="chip ${chipClass}" style="flex-shrink:0">
-            <span class="chip-dot"></span>${statusLabel}
-          </span>
+      <div class="section-header">
+        <span class="section-title">⚠️ Overdue Tasks</span>
+        <span class="section-count" style="background:var(--danger-bg);color:var(--danger)">${tasks.length}</span>
+      </div>
+      ${tasks.map(t => `
+        <div class="card priority-${t.priority}" style="padding:14px 16px;cursor:pointer" onclick="App.navigate('task-${t.id}')">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+            <span class="task-title" style="flex:1;font-size:0.88rem">${_esc(t.title)}</span>
+            <span class="chip chip-todo" style="flex-shrink:0;font-size:0.6rem"><span class="chip-dot"></span>${_statusLabel(t.status)}</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--danger);font-weight:600">
+            ⚠️ Due ${_fmtDate(t.dueDate)} — overdue
+          </div>
         </div>
+      `).join('')}
+    `;
+  }
 
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px">
-          <span class="chip" style="background:var(--pink-50);color:var(--pink-600);font-size:0.65rem">
-            ${t.priority.charAt(0).toUpperCase() + t.priority.slice(1)}
-          </span>
-          ${t.dueDate ? `
-            <span style="font-size:0.72rem;color:${isOverdue ? 'var(--danger)' : 'var(--text-muted)'};display:flex;align-items:center;gap:4px;font-weight:${isOverdue ? '600' : '400'}">
-              ${isOverdue ? '⚠️' : '📅'} ${_fmtDate(t.dueDate)}${isOverdue ? ' — overdue' : ''}
-            </span>
-          ` : ''}
+  /* ── Expiring Placements ── */
+  function _renderExpiringPlacements(pls) {
+    if (!pls.length) return '';
+    return `
+      <div class="section-header" style="margin-top:8px">
+        <span class="section-title">🕐 Expiring Soon</span>
+        <span class="section-count" style="background:var(--warning-bg);color:#B8860B">${pls.length}</span>
+      </div>
+      ${pls.map(pl => `
+        <div class="card" style="padding:14px 16px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+            <span style="font-weight:600;font-size:0.88rem;flex:1">${_esc(pl.name)}</span>
+            <span style="font-size:0.65rem;color:var(--danger);font-weight:600;white-space:nowrap">Remove by ${_fmtDate(pl.removal_date)}</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted)">${_esc(pl.locationName)} · ${_esc(pl.zoneName)}</div>
         </div>
+      `).join('')}
+    `;
+  }
 
-        ${canAdvance ? `
-          <button class="btn btn-primary btn-sm" style="margin-top:14px" onclick="event.stopPropagation(); TasksPage.advance('${t.id}'); App.navigate('dashboard')">
-            ${nextLabel} →
-          </button>
-        ` : ''}
+  /* ── Pending Approvals ── */
+  function _renderPendingApprovals(apps) {
+    if (!apps.length) return '';
+    return `
+      <div class="section-header" style="margin-top:8px">
+        <span class="section-title">⏱️ Pending Approvals</span>
+        <span class="section-count">${apps.length}</span>
+      </div>
+      ${apps.map(a => `
+        <div class="card" style="padding:14px 16px;cursor:pointer" onclick="App.navigate('approvals')">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+            <span class="task-title" style="flex:1;font-size:0.88rem">${_esc(a.title)}</span>
+            <span class="chip chip-review" style="flex-shrink:0;font-size:0.6rem"><span class="chip-dot"></span>Pending</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted)">
+            Submitted by ${_esc(a.submittedBy)} · ${_timeAgo(a.createdAt)}
+            ${a.approval_stage ? ` · Stage: ${_stageLabel(a.approval_stage)}` : ''}
+          </div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  /* ── Tomorrow's Events ── */
+  function _renderTomorrowEvents(events) {
+    if (!events.length) return '';
+    return `
+      <div class="section-header" style="margin-top:8px">
+        <span class="section-title">📅 Tomorrow's Events</span>
+        <span class="section-count">${events.length}</span>
+      </div>
+      ${events.map(c => `
+        <div class="card" style="padding:14px 16px;cursor:pointer" onclick="App.navigate('campaign-${c.id}')">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+            <span style="font-size:1.1rem">🎉</span>
+            <span style="font-weight:600;font-size:0.88rem;flex:1">${_esc(c.name)}</span>
+          </div>
+          <div style="font-size:0.72rem;color:var(--text-muted)">${_esc(c.description || '').slice(0, 80)}</div>
+        </div>
+      `).join('')}
+    `;
+  }
+
+  /* ── This Week Overview ── */
+  function _renderWeekOverview(tasksDue, events, expiring, allActive) {
+    return `
+      <div class="section-header" style="margin-top:8px">
+        <span class="section-title">📊 This Week</span>
+      </div>
+      <div class="card" style="padding:16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div style="text-align:center;padding:10px 0;background:var(--gray-50);border-radius:var(--radius-sm)">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--text)">${allActive.length}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);margin-top:2px">Active Tasks</div>
+          </div>
+          <div style="text-align:center;padding:10px 0;background:var(--gray-50);border-radius:var(--radius-sm)">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--pink-500)">${tasksDue.length}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);margin-top:2px">Due This Week</div>
+          </div>
+          <div style="text-align:center;padding:10px 0;background:var(--gray-50);border-radius:var(--radius-sm)">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--info)">${events.length}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);margin-top:2px">Events</div>
+          </div>
+          <div style="text-align:center;padding:10px 0;background:var(--gray-50);border-radius:var(--radius-sm)">
+            <div style="font-size:1.4rem;font-weight:700;color:${expiring.length > 0 ? 'var(--warning)' : 'var(--success)'}">${expiring.length}</div>
+            <div style="font-size:0.68rem;color:var(--text-muted);margin-top:2px">Expiring</div>
+          </div>
+        </div>
       </div>
     `;
   }
 
-  function _renderApprovalCard(a) {
-    const canApprove = Store.Permissions.can('approve');
-    return `
-      <div class="card" style="padding:16px 18px" onclick="App.navigate('approvals')">
-        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:4px">
-          <span class="task-title" style="flex:1">${_esc(a.title)}</span>
-          <span class="chip chip-review" style="flex-shrink:0"><span class="chip-dot"></span>Pending</span>
-        </div>
-        <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:8px">
-          Submitted by ${_esc(a.submittedBy)} · ${_timeAgo(a.createdAt)}
-        </div>
-        ${canApprove ? `
-          <div style="display:flex;gap:8px">
-            <button class="btn btn-success btn-sm" onclick="event.stopPropagation(); ApprovalsPage.approve('${a.id}'); App.navigate('dashboard')">✓ Approve</button>
-            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); ApprovalsPage.needsChanges('${a.id}'); App.navigate('dashboard')">Changes</button>
-          </div>
-        ` : `
-          <button class="btn btn-secondary btn-sm" onclick="App.navigate('approvals')">View Details →</button>
-        `}
-      </div>
-    `;
+  /* ── Helpers ── */
+  function _statusLabel(s) {
+    return { draft: 'Draft', progress: 'In Progress', review: 'Review', approved: 'Approved', published: 'Published' }[s] || s;
+  }
+
+  function _stageLabel(s) {
+    return { manager_review: 'Manager Review', admin_review: 'Admin Review', director_review: 'Director Review', approved: 'Approved' }[s] || s;
   }
 
   function _roleHint(role) {

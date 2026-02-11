@@ -9,6 +9,7 @@ const CampaignsPage = (() => {
     event:     { label: 'Event',     icon: '🎉' },
     ongoing:   { label: 'Ongoing',   icon: '♻️' },
     promotion: { label: 'Promotion', icon: '🏷️' },
+    calendar:  { label: 'Calendar',  icon: '📅' },
   };
 
   function render() {
@@ -64,8 +65,29 @@ const CampaignsPage = (() => {
     const statusLabel = { active: 'Active', expired: 'Expired', draft: 'Draft' };
     const daysLeft = c.end_date ? Math.ceil((new Date(c.end_date) - Date.now()) / 86400000) : null;
 
+    // Color-coded expiration
+    let expiryColor = 'var(--text-light)';
+    let expiryBg = 'transparent';
+    let expiryWarning = '';
+    if (daysLeft !== null && c.status === 'active') {
+      if (daysLeft <= 3) {
+        expiryColor = 'var(--danger)'; expiryBg = 'var(--danger-bg)';
+        expiryWarning = '🔴';
+      } else if (daysLeft <= 7) {
+        expiryColor = '#B8860B'; expiryBg = 'var(--warning-bg)';
+        expiryWarning = '🟡';
+      } else if (daysLeft <= 14) {
+        expiryColor = 'var(--warning)'; expiryBg = 'var(--warning-bg)';
+        expiryWarning = '🟡';
+      } else {
+        expiryColor = 'var(--success)';
+        expiryWarning = '🟢';
+      }
+    }
+    const placementCount = _countPlacements(c.id);
+
     return `
-      <div class="card camp-card" onclick="CampaignsPage.openDetail('${c.id}')" style="cursor:pointer">
+      <div class="card camp-card" onclick="CampaignsPage.openDetail('${c.id}')" style="cursor:pointer;${daysLeft !== null && daysLeft <= 3 && c.status === 'active' ? 'border-left:3px solid var(--danger);' : ''}">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:6px">
           <div>
             <div class="camp-card-icon">${ct.icon}</div>
@@ -75,15 +97,18 @@ const CampaignsPage = (() => {
         </div>
         <p class="camp-card-desc">${_esc(c.description || '')}</p>
         <div class="camp-card-meta">
-          <span class="camp-card-type">${ct.label}</span>
+          <span class="camp-card-type">${ct.label.toUpperCase()}</span>
           <span class="apv-meta-dot">·</span>
           <span>${c.start_date || '—'} → ${c.end_date || '—'}</span>
           ${daysLeft !== null && c.status === 'active' ? `
             <span class="apv-meta-dot">·</span>
-            <span style="color:${daysLeft <= 7 ? 'var(--danger)' : 'var(--text-light)'}">${daysLeft > 0 ? daysLeft + 'd left' : 'Ending today'}</span>
+            <span style="color:${expiryColor};font-weight:600">${expiryWarning} ${daysLeft > 0 ? daysLeft + 'd left' : 'Ending today'}</span>
           ` : ''}
         </div>
-        <div class="camp-card-placements">${_esc(_countPlacements(c.id))} placements</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px">
+          <span class="camp-card-placements">${placementCount} placement${placementCount !== 1 ? 's' : ''}</span>
+          ${daysLeft !== null && daysLeft <= 3 && c.status === 'active' ? `<span style="font-size:0.68rem;padding:2px 8px;border-radius:var(--radius-full);background:${expiryBg};color:${expiryColor};font-weight:600">⚠ Expiring soon</span>` : ''}
+        </div>
       </div>
     `;
   }

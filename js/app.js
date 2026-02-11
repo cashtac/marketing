@@ -1,6 +1,9 @@
-/* ─── App — Router, Shell, Modal system ─── */
+/* ─── App — Router, Shell, Modal, Drawer, Role Switcher ─── */
 const App = (() => {
   let _currentPage = 'dashboard';
+  let _previewMode = false;
+  let _originalRole = null;
+
   const PAGES = {
     dashboard:    () => DashboardPage.render(),
     tasks:        () => TasksPage.render(),
@@ -17,6 +20,9 @@ const App = (() => {
     campaignview: () => CampaignsPage.render(),
   };
 
+  /* Pages that live under the "More" drawer (not primary nav tabs) */
+  const MORE_PAGES = ['approvals','assets','content','campaigns','team','settings'];
+
   function init() {
     Store.seed();
     _currentPage = _parseHash();
@@ -25,7 +31,6 @@ const App = (() => {
     }
     _render();
     updateHeader();
-    _updateNavVisibility();
     window.addEventListener('hashchange', () => {
       _currentPage = _parseHash();
       if (!PAGES[_currentPage] || (_currentPage !== 'taskview' && _currentPage !== 'locationview' && _currentPage !== 'placementview' && _currentPage !== 'campaignview' && !Store.Permissions.canAccessPage(_currentPage))) {
@@ -39,23 +44,19 @@ const App = (() => {
 
   function _parseHash() {
     const h = location.hash.replace('#', '');
-    // task-{id} → taskview
     if (h.startsWith('task-')) {
       TaskViewPage.setTaskId(h.replace('task-', ''));
       return 'taskview';
     }
-    // location-{id} → locationview
     if (h.startsWith('location-')) {
       LocationsPage.setLocationId(h.replace('location-', ''));
       return 'locationview';
     }
-    // placement-{locId}-{zoneId}-{plId} → placementview
     if (h.startsWith('placement-')) {
       const parts = h.replace('placement-', '').split('_');
       LocationsPage.setPlacementPath(parts[0], parts[1], parts[2]);
       return 'placementview';
     }
-    // campaign-{id} → campaignview
     if (h.startsWith('campaign-')) {
       CampaignsPage.setCampaignId(h.replace('campaign-', ''));
       return 'campaignview';
@@ -64,7 +65,9 @@ const App = (() => {
   }
 
   function navigate(page) {
-    // Allow task-{id} navigation
+    closeMoreDrawer();
+    closeRoleSwitcher();
+
     if (page.startsWith('task-')) {
       TaskViewPage.setTaskId(page.replace('task-', ''));
       _currentPage = 'taskview';
@@ -73,7 +76,6 @@ const App = (() => {
       _updateNav();
       return;
     }
-    // Allow location-{id} navigation
     if (page.startsWith('location-')) {
       LocationsPage.setLocationId(page.replace('location-', ''));
       _currentPage = 'locationview';
@@ -82,7 +84,6 @@ const App = (() => {
       _updateNav();
       return;
     }
-    // Allow placement-{locId}_{zoneId}_{plId} navigation
     if (page.startsWith('placement-')) {
       const parts = page.replace('placement-', '').split('_');
       LocationsPage.setPlacementPath(parts[0], parts[1], parts[2]);
@@ -92,7 +93,6 @@ const App = (() => {
       _updateNav();
       return;
     }
-    // Allow campaign-{id} navigation
     if (page.startsWith('campaign-')) {
       CampaignsPage.setCampaignId(page.replace('campaign-', ''));
       _currentPage = 'campaignview';
@@ -109,17 +109,13 @@ const App = (() => {
   }
 
   function refresh() {
-    // Check for expired placements and auto-create removal tasks
     Store.checkExpiryAndCreateTasks();
-
-    // Re-check page access in case role changed
     if (_currentPage !== 'taskview' && _currentPage !== 'locationview' && _currentPage !== 'placementview' && _currentPage !== 'campaignview' && !Store.Permissions.canAccessPage(_currentPage)) {
       _currentPage = Store.Permissions.defaultPage();
       location.hash = _currentPage;
     }
     _render();
     updateHeader();
-    _updateNavVisibility();
   }
 
   function _render() {
@@ -130,17 +126,20 @@ const App = (() => {
   }
 
   function _updateNav() {
-    const activePage = _currentPage === 'taskview' ? 'tasks' : (_currentPage === 'locationview' || _currentPage === 'placementview') ? 'locations' : _currentPage === 'campaignview' ? 'campaigns' : _currentPage;
-    document.querySelectorAll('.nav-item').forEach(n => {
-      n.classList.toggle('active', n.dataset.page === activePage);
-    });
-  }
+    const activePage = _currentPage === 'taskview' ? 'tasks'
+      : (_currentPage === 'locationview' || _currentPage === 'placementview') ? 'locations'
+      : _currentPage === 'campaignview' ? 'campaigns'
+      : _currentPage;
 
-  function _updateNavVisibility() {
-    const visible = Store.Permissions.visiblePages();
+    const isMorePage = MORE_PAGES.includes(activePage);
+
     document.querySelectorAll('.nav-item').forEach(n => {
-      const page = n.dataset.page;
-      n.style.display = visible.includes(page) ? '' : 'none';
+      const pg = n.dataset.page;
+      if (pg === 'more') {
+        n.classList.toggle('active', isMorePage);
+      } else {
+        n.classList.toggle('active', pg === activePage && !isMorePage);
+      }
     });
   }
 
@@ -148,6 +147,100 @@ const App = (() => {
     const s = Store.getSettings();
     const badge = document.getElementById('role-badge');
     if (badge) badge.textContent = s.role;
+  }
+
+  /* ── More Drawer ── */
+  function openMoreDrawer() {
+    const overlay = document.getElementById('drawer-overlay');
+    const body = document.getElementById('drawer-body');
+    const items = Store.Permissions.drawerItems();
+    body.innerHTML = items.map(item => `
+      <button class="drawer-item" onclick="App.navigate('${item.page}')">
+        <span class="drawer-item-icon">${item.icon}</span>
+        <span class="drawer-item-label">${item.label}</span>
+        <svg class="drawer-item-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    `).join('');
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeMoreDrawer() {
+    const overlay = document.getElementById('drawer-overlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+  }
+
+  /* ── Role Switcher ── */
+  function openRoleSwitcher() {
+    const overlay = document.getElementById('role-switcher-overlay');
+    const body = document.getElementById('role-switcher-body');
+    const currentRole = Store.getSettings().role;
+    const roles = [
+      { role: 'Admin', icon: '🛡️', desc: 'Full system access' },
+      { role: 'Marketing Director', icon: '👔', desc: 'Approve & oversee' },
+      { role: 'Marketing Manager', icon: '📋', desc: 'Manage tasks & assets' },
+      { role: 'Graphic Designer', icon: '🎨', desc: 'Design assignments' },
+      { role: 'Social Media Manager', icon: '📱', desc: 'Content & social' },
+    ];
+    body.innerHTML = roles.map(r => `
+      <button class="role-option ${r.role === currentRole ? 'active' : ''}" onclick="App.switchRole('${r.role}')">
+        <span class="role-option-icon">${r.icon}</span>
+        <div class="role-option-info">
+          <span class="role-option-name">${r.role}</span>
+          <span class="role-option-desc">${r.desc}</span>
+        </div>
+        ${r.role === currentRole ? '<span class="role-option-check">✓</span>' : ''}
+      </button>
+    `).join('');
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeRoleSwitcher() {
+    const overlay = document.getElementById('role-switcher-overlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+  }
+
+  function switchRole(role) {
+    const current = Store.getSettings();
+    if (!_previewMode) {
+      _originalRole = current.role;
+    }
+    Store.saveSettings({ ...current, role });
+    _previewMode = (role !== _originalRole && _originalRole !== null);
+
+    const banner = document.getElementById('preview-banner');
+    const roleName = document.getElementById('preview-role-name');
+    if (_previewMode) {
+      roleName.textContent = role;
+      banner.style.display = 'flex';
+      document.body.classList.add('has-preview-banner');
+    } else {
+      banner.style.display = 'none';
+      document.body.classList.remove('has-preview-banner');
+      _originalRole = null;
+    }
+
+    closeRoleSwitcher();
+    refresh();
+  }
+
+  function exitPreview() {
+    if (_originalRole) {
+      const current = Store.getSettings();
+      Store.saveSettings({ ...current, role: _originalRole });
+    }
+    _previewMode = false;
+    _originalRole = null;
+    document.getElementById('preview-banner').style.display = 'none';
+    document.body.classList.remove('has-preview-banner');
+    refresh();
   }
 
   /* ── Modal ── */
@@ -165,7 +258,11 @@ const App = (() => {
     document.body.style.overflow = '';
   }
 
-  return { init, navigate, refresh, updateHeader, showModal, closeModal };
+  return {
+    init, navigate, refresh, updateHeader, showModal, closeModal,
+    openMoreDrawer, closeMoreDrawer,
+    openRoleSwitcher, closeRoleSwitcher, switchRole, exitPreview,
+  };
 })();
 
 document.addEventListener('DOMContentLoaded', App.init);

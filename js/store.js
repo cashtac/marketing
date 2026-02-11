@@ -93,6 +93,7 @@ const Store = (() => {
     a.id = _id();
     a.createdAt = _now();
     a.status = 'pending';
+    a.approval_stage = a.approval_stage || 'manager_review';
     a.comments = [];
     approvals.unshift(a);
     saveApprovals(approvals);
@@ -487,9 +488,9 @@ const Store = (() => {
     saveTasks(tasks);
 
     const approvals = [
-      { id: _id(), title: 'Spring Campaign Concept Deck', submittedBy: 'Jordan Lee', description: '12-slide concept deck covering creative direction, target audience, and channel strategy for the spring product launch.', previewType: 'document', context: 'Needed before Feb 25 launch. Budget already allocated.', status: 'pending', createdAt: _now(), comments: [] },
-      { id: _id(), title: 'New Instagram Reel Script', submittedBy: 'Morgan Ellis', description: '30-second product showcase reel. Script covers hook, feature highlights, and CTA.', previewType: 'video', context: 'Part of weekly content calendar. Scheduled to post Thursday.', status: 'pending', createdAt: _now(), comments: [] },
-      { id: _id(), title: 'Homepage Hero Banner v2', submittedBy: 'Sam Chen', description: 'Revised 1440×600 hero banner with updated spring color palette and new headline copy.', previewType: 'image', context: 'Replaces current outdated banner. A/B test ready.', status: 'approved', createdAt: _now(), comments: [] },
+      { id: _id(), title: 'Spring Campaign Concept Deck', submittedBy: 'Jordan Lee', description: '12-slide concept deck covering creative direction, target audience, and channel strategy for the spring product launch.', previewType: 'document', context: 'Needed before Feb 25 launch. Budget already allocated.', status: 'pending', approval_stage: 'manager_review', createdAt: _now(), comments: [] },
+      { id: _id(), title: 'New Instagram Reel Script', submittedBy: 'Morgan Ellis', description: '30-second product showcase reel. Script covers hook, feature highlights, and CTA.', previewType: 'video', context: 'Part of weekly content calendar. Scheduled to post Thursday.', status: 'pending', approval_stage: 'admin_review', createdAt: _now(), comments: [] },
+      { id: _id(), title: 'Homepage Hero Banner v2', submittedBy: 'Sam Chen', description: 'Revised 1440×600 hero banner with updated spring color palette and new headline copy.', previewType: 'image', context: 'Replaces current outdated banner. A/B test ready.', status: 'approved', approval_stage: 'approved', createdAt: _now(), comments: [] },
     ];
     saveApprovals(approvals);
 
@@ -790,6 +791,28 @@ const Store = (() => {
       const name = getSettings().name;
       if (role === 'Admin' || role === 'Marketing Manager' || role === 'Marketing Director') return content;
       return content.filter(c => c.assignee === name);
+    },
+
+    /* Items for the "More" drawer — role-based */
+    drawerItems() {
+      const role = getSettings().role;
+      const ALL = [
+        { page: 'assets',    icon: '📁', label: 'Assets' },
+        { page: 'content',   icon: '🎬', label: 'Content' },
+        { page: 'campaigns', icon: '📣', label: 'Campaigns' },
+        { page: 'approvals', icon: '⏱️', label: 'Approvals' },
+        { page: 'team',      icon: '👥', label: 'Team' },
+        { page: 'settings',  icon: '⚙️', label: 'Settings' },
+      ];
+      const map = {
+        'Admin':                  ['assets','content','campaigns','approvals','team','settings'],
+        'Marketing Director':     ['content','campaigns','approvals','settings'],
+        'Marketing Manager':      ['assets','content','campaigns','settings'],
+        'Graphic Designer':       ['assets','content','settings'],
+        'Social Media Manager':   ['content','settings'],
+      };
+      const allowed = map[role] || ['settings'];
+      return ALL.filter(i => allowed.includes(i.page));
     },
 
     /*  Default landing page for the current role  */

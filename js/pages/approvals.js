@@ -1,11 +1,24 @@
-/* ─── Approvals Page — Preview-first, fast decisions ─── */
+/* ─── Approvals Page — 4-stage workflow: Designer → Manager → Admin → Director ─── */
 const ApprovalsPage = (() => {
   let _filter = 'pending';
+
+  /* Stage progression: designer submits → manager_review → admin_review → director_review → approved */
+  const STAGES = {
+    manager_review:  { label: 'Manager Review',  icon: '📋', nextStage: 'admin_review',    reviewerRole: ['Marketing Manager', 'Admin'] },
+    admin_review:    { label: 'Admin Review',     icon: '🛡️', nextStage: 'director_review', reviewerRole: ['Admin'] },
+    director_review: { label: 'Director Review',  icon: '👔', nextStage: 'approved',         reviewerRole: ['Marketing Director', 'Admin'] },
+    approved:        { label: 'Final Approved',   icon: '✅', nextStage: null,               reviewerRole: [] },
+  };
+
+  function _canReviewAtStage(stage) {
+    const role = Store.getSettings().role;
+    const s = STAGES[stage];
+    return s ? s.reviewerRole.includes(role) : false;
+  }
 
   function render() {
     const allApprovals = Store.getApprovals();
     const approvals = Store.Permissions.filterApprovals(allApprovals);
-    const canApprove = Store.Permissions.can('approve');
     const canComment = Store.Permissions.can('comment_approval');
     const filtered = _filter === 'all' ? approvals : approvals.filter(a => a.status === _filter);
     const pendingCount = approvals.filter(a => a.status === 'pending').length;
@@ -13,7 +26,7 @@ const ApprovalsPage = (() => {
     return `
       <div class="page active" id="page-approvals">
         <h1 class="page-title">Approvals</h1>
-        <p class="page-subtitle">${canApprove ? `${pendingCount} item${pendingCount !== 1 ? 's' : ''} waiting for your decision` : 'Track your submissions'}</p>
+        <p class="page-subtitle">${pendingCount} item${pendingCount !== 1 ? 's' : ''} in review pipeline</p>
 
         <div class="filter-bar">
           <button class="filter-chip ${_filter === 'pending' ? 'active' : ''}" onclick="ApprovalsPage.setFilter('pending')">Pending${pendingCount ? ` (${pendingCount})` : ''}</button>
@@ -29,32 +42,24 @@ const ApprovalsPage = (() => {
           </div>
         ` : ''}
 
-        ${filtered.map(a => _renderCard(a, canApprove, canComment)).join('')}
+        ${filtered.map(a => _renderCard(a, canComment)).join('')}
       </div>
     `;
   }
 
-  function _renderCard(a, canApprove, canComment) {
+  function _renderCard(a, canComment) {
     const statusBadge = {
       pending:  '<span class="chip chip-review"><span class="chip-dot"></span>Pending</span>',
       approved: '<span class="chip chip-done"><span class="chip-dot"></span>Approved</span>',
       changes:  '<span class="chip chip-todo"><span class="chip-dot"></span>Needs Changes</span>',
     }[a.status] || '';
 
-    const previewIcon = {
-      image:    '🖼️',
-      video:    '🎬',
-      document: '📄',
-    }[a.previewType] || '📎';
-
-    const previewLabel = {
-      image:    'Image',
-      video:    'Video',
-      document: 'Document',
-    }[a.previewType] || 'File';
-
+    const previewIcon = { image: '🖼️', video: '🎬', document: '📄' }[a.previewType] || '📎';
+    const previewLabel = { image: 'Image', video: 'Video', document: 'Document' }[a.previewType] || 'File';
     const comments = a.comments || [];
-    const role = Store.getSettings().role;
+    const stage = a.approval_stage || 'manager_review';
+    const stageInfo = STAGES[stage] || STAGES.manager_review;
+    const canReview = a.status === 'pending' && _canReviewAtStage(stage);
 
     return `
       <div class="card approval-preview-card">
@@ -76,6 +81,13 @@ const ApprovalsPage = (() => {
             <h3 class="apv-title">${_esc(a.title)}</h3>
             ${statusBadge}
           </div>
+
+          <!-- Stage indicator -->
+          ${a.status === 'pending' ? `
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding:6px 10px;background:var(--gray-50);border-radius:var(--radius-sm);font-size:0.72rem">
+              ${_renderStageTrack(stage)}
+            </div>
+          ` : ''}
 
           <p class="apv-desc">${_esc(a.description || '')}</p>
 
@@ -110,11 +122,11 @@ const ApprovalsPage = (() => {
             </div>
           ` : ''}
 
-          <!-- Actions — only for pending items, only for approvers -->
-          ${a.status === 'pending' && canApprove ? `
+          <!-- Actions — stage-aware -->
+          ${canReview ? `
             <div class="apv-actions">
               <button class="btn apv-btn-approve" onclick="ApprovalsPage.openApproveModal('${a.id}')">
-                ✓ Approve
+                ✓ ${stageInfo.nextStage === 'approved' ? 'Final Approve' : 'Advance to ' + (STAGES[stageInfo.nextStage]?.label || 'Next')}
               </button>
               <button class="btn apv-btn-changes" onclick="ApprovalsPage.openChangesModal('${a.id}')">
                 Needs changes
@@ -122,7 +134,7 @@ const ApprovalsPage = (() => {
             </div>
           ` : ''}
 
-          <!-- Inline comment (Manager) — for pending or changes items -->
+          <!-- Inline comment -->
           ${canComment && (a.status === 'pending' || a.status === 'changes') ? `
             <div class="rv-inline-add">
               <input class="rv-inline-input" type="text" placeholder="Add a review note…" id="rv-note-${a.id}" onkeydown="if(event.key==='Enter')ApprovalsPage.addNote('${a.id}')" />
@@ -134,37 +146,70 @@ const ApprovalsPage = (() => {
     `;
   }
 
+  function _renderStageTrack(currentStage) {
+    const stageOrder = ['manager_review', 'admin_review', 'director_review', 'approved'];
+    const currentIdx = stageOrder.indexOf(currentStage);
+    return stageOrder.map((s, i) => {
+      const info = STAGES[s];
+      const done = i < currentIdx;
+      const active = i === currentIdx;
+      const color = done ? 'var(--success)' : active ? 'var(--pink-500)' : 'var(--text-light)';
+      return `<span style="color:${color};font-weight:${active ? '700' : '400'}">${done ? '✓' : info.icon} ${info.label}</span>${i < stageOrder.length - 1 ? '<span style="color:var(--text-light)">→</span>' : ''}`;
+    }).join('');
+  }
+
   function setFilter(f) { _filter = f; App.refresh(); }
 
-  /* ── Approve with optional decision note ── */
+  /* ── Approve — advances to next stage, or final approve ── */
   function openApproveModal(id) {
-    if (!Store.Permissions.can('approve')) return;
     const a = Store.getApprovals().find(x => x.id === id);
     if (!a) return;
-    App.showModal('Approve: ' + a.title, `
+    const stage = a.approval_stage || 'manager_review';
+    const stageInfo = STAGES[stage];
+    if (!_canReviewAtStage(stage)) return;
+
+    const isFinal = stageInfo.nextStage === 'approved';
+    App.showModal((isFinal ? 'Final Approve: ' : 'Advance: ') + a.title, `
       <div class="rv-modal">
-        <p class="rv-modal-desc">You're approving <strong>${_esc(a.title)}</strong>.</p>
+        <p class="rv-modal-desc">
+          ${isFinal
+            ? `You're giving final approval for <strong>${_esc(a.title)}</strong>.`
+            : `Advancing <strong>${_esc(a.title)}</strong> to <strong>${STAGES[stageInfo.nextStage]?.label}</strong>.`
+          }
+        </p>
         <label class="rv-modal-label">Decision Note <span style="color:var(--text-light);font-weight:400">(optional)</span></label>
         <textarea id="rv-approve-note" class="rv-modal-textarea" rows="3" placeholder="e.g. Looks great, ship it!"></textarea>
-        <button class="btn btn-primary btn-block" onclick="ApprovalsPage.confirmApprove('${id}')">✓ Approve</button>
+        <button class="btn btn-primary btn-block" onclick="ApprovalsPage.confirmApprove('${id}')">✓ ${isFinal ? 'Approve' : 'Advance'}</button>
       </div>
     `);
   }
+
   function confirmApprove(id) {
-    if (!Store.Permissions.can('approve')) return;
+    const a = Store.getApprovals().find(x => x.id === id);
+    if (!a) return;
+    const stage = a.approval_stage || 'manager_review';
+    if (!_canReviewAtStage(stage)) return;
+
+    const stageInfo = STAGES[stage];
     const note = (document.getElementById('rv-approve-note')?.value || '').trim();
+    const name = Store.getSettings().name;
+
     if (note) {
-      Store.addApprovalComment(id, { text: note, type: 'decision', author: Store.getSettings().name, time: new Date().toISOString() });
+      Store.addApprovalComment(id, { text: note, type: 'decision', author: name, time: new Date().toISOString() });
     }
-    Store.updateApproval(id, { status: 'approved' });
-    Store.addActivity(`Approval approved by ${Store.getSettings().name}`);
+
+    const isFinal = stageInfo.nextStage === 'approved';
+    Store.updateApproval(id, {
+      status: isFinal ? 'approved' : 'pending',
+      approval_stage: stageInfo.nextStage,
+    });
+    Store.addActivity(`Approval ${isFinal ? 'approved' : 'advanced to ' + STAGES[stageInfo.nextStage]?.label} by ${name}`);
     App.closeModal();
     App.refresh();
   }
 
-  /* ── Needs Changes with required change notes ── */
+  /* ── Needs Changes — sends back to designer ── */
   function openChangesModal(id) {
-    if (!Store.Permissions.can('request_changes')) return;
     const a = Store.getApprovals().find(x => x.id === id);
     if (!a) return;
     App.showModal('Request Changes: ' + a.title, `
@@ -177,22 +222,24 @@ const ApprovalsPage = (() => {
       </div>
     `);
   }
+
   function confirmChanges(id) {
-    if (!Store.Permissions.can('request_changes')) return;
     const note = (document.getElementById('rv-changes-note')?.value || '').trim();
     if (!note) {
       const err = document.getElementById('rv-changes-error');
       if (err) err.style.display = 'block';
       return;
     }
-    Store.addApprovalComment(id, { text: note, type: 'change_request', author: Store.getSettings().name, time: new Date().toISOString() });
-    Store.updateApproval(id, { status: 'changes' });
-    Store.addActivity(`Changes requested by ${Store.getSettings().name}`);
+    const name = Store.getSettings().name;
+    Store.addApprovalComment(id, { text: note, type: 'change_request', author: name, time: new Date().toISOString() });
+    // Send back to step 1 (manager_review)
+    Store.updateApproval(id, { status: 'changes', approval_stage: 'manager_review' });
+    Store.addActivity(`Changes requested by ${name}`);
     App.closeModal();
     App.refresh();
   }
 
-  /* ── Inline note (any commenter) ── */
+  /* ── Inline note ── */
   function addNote(id) {
     if (!Store.Permissions.can('comment_approval')) return;
     const input = document.getElementById('rv-note-' + id);
@@ -213,6 +260,26 @@ const ApprovalsPage = (() => {
     `);
   }
 
+  /* ── Quick approve from dashboard (auto-advances one stage) ── */
+  function approve(id) {
+    const a = Store.getApprovals().find(x => x.id === id);
+    if (!a) return;
+    const stage = a.approval_stage || 'manager_review';
+    const stageInfo = STAGES[stage];
+    if (!stageInfo) return;
+    const isFinal = stageInfo.nextStage === 'approved';
+    Store.updateApproval(id, {
+      status: isFinal ? 'approved' : 'pending',
+      approval_stage: stageInfo.nextStage,
+    });
+    Store.addActivity(`Approval ${isFinal ? 'approved' : 'advanced'} by ${Store.getSettings().name}`);
+  }
+
+  function needsChanges(id) {
+    Store.updateApproval(id, { status: 'changes', approval_stage: 'manager_review' });
+    Store.addActivity(`Changes requested by ${Store.getSettings().name}`);
+  }
+
   function _commentBadge(type) {
     if (type === 'change_request') return '<span class="rv-badge rv-badge-change">Change Request</span>';
     if (type === 'decision') return '<span class="rv-badge rv-badge-decision">Decision</span>';
@@ -231,5 +298,5 @@ const ApprovalsPage = (() => {
     return `${Math.floor(hrs / 24)}d ago`;
   }
 
-  return { render, setFilter, openApproveModal, confirmApprove, openChangesModal, confirmChanges, addNote, openPreview };
+  return { render, setFilter, openApproveModal, confirmApprove, openChangesModal, confirmChanges, addNote, openPreview, approve, needsChanges };
 })();
