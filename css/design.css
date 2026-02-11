@@ -1308,6 +1308,47 @@ body.has-preview-banner .app-content { padding-top: calc(var(--header-height) + 
 .camp-placement-name { font-size: 0.82rem; font-weight: 600; }
 .camp-placement-meta { font-size: 0.65rem; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin-top: 3px; }
 
+/* ─── Event Comments ─── */
+.comment-section { margin-top: 12px; }
+.comment-item {
+  display: flex; gap: 10px; padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.comment-item:last-of-type { border-bottom: none; }
+.comment-avatar {
+  width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--pink-400), var(--pink-600));
+  color: #fff; font-size: 0.62rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  letter-spacing: 0.02em;
+}
+.comment-body { flex: 1; min-width: 0; }
+.comment-header {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 2px;
+}
+.comment-author { font-size: 0.76rem; font-weight: 700; color: var(--text); }
+.comment-time { font-size: 0.62rem; color: var(--text-light); }
+.comment-text { font-size: 0.8rem; color: var(--text); line-height: 1.45; word-break: break-word; }
+.comment-mention {
+  color: var(--pink-500); font-weight: 600;
+  background: var(--pink-50); border-radius: 4px;
+  padding: 1px 4px;
+}
+.comment-input-row {
+  display: flex; flex-direction: column; margin-top: 10px;
+  padding-top: 10px; border-top: 1px solid var(--border);
+}
+.comment-textarea {
+  width: 100%; padding: 10px 12px;
+  border: 1.5px solid var(--border); border-radius: var(--radius-md);
+  font-family: inherit; font-size: 0.8rem;
+  background: #fff; color: var(--text); outline: none;
+  resize: vertical; min-height: 48px; box-sizing: border-box;
+  transition: var(--transition);
+}
+.comment-textarea:focus { border-color: var(--pink-300); }
+.comment-textarea::placeholder { color: var(--text-light); }
+
 /* ─── Directory Filters ─── */
 .dir-toggle-row { margin: 6px 0 4px; }
 .dir-toggle-label { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; cursor: pointer; }
