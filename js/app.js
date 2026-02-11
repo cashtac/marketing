@@ -2,11 +2,7 @@
 const App = (() => {
   let _currentPage = 'dashboard';
 
-  /* Role labels for display */
-  const ROLE_LABELS = {
-    ADMIN: 'Admin', DIRECTOR: 'Director', MANAGER: 'Manager',
-    DESIGNER: 'Designer', SOCIAL_MEDIA_INTERN: 'Social Intern',
-  };
+  /* Role labels for display — roles are already human-readable */
 
   const PAGES = {
     dashboard:    () => DashboardPage.render(),
@@ -152,7 +148,7 @@ const App = (() => {
     const badge = document.getElementById('role-badge');
     if (!badge) return;
     const activeRole = Store.getActiveRole();
-    badge.textContent = ROLE_LABELS[activeRole] || activeRole;
+    badge.textContent = activeRole;
     if (Store.isPreviewMode()) {
       badge.style.background = 'var(--warning, #E8A640)';
       badge.style.color = '#fff';
@@ -168,7 +164,7 @@ const App = (() => {
     const roleName = document.getElementById('preview-role-name');
     if (!banner) return;
     if (Store.isPreviewMode()) {
-      const label = ROLE_LABELS[Store.getActiveRole()] || Store.getActiveRole();
+      const label = Store.getActiveRole();
       roleName.textContent = label;
       banner.style.display = 'flex';
       document.body.classList.add('has-preview-banner');
@@ -209,11 +205,11 @@ const App = (() => {
     const activeRole = Store.getActiveRole();
     const R = Store.ROLES;
     const roles = [
-      { role: R.ADMIN,                icon: '🛡️', label: 'Admin',          desc: 'Full system access' },
-      { role: R.DIRECTOR,             icon: '👔', label: 'Director',       desc: 'Approve & oversee (preview)' },
-      { role: R.MANAGER,              icon: '📋', label: 'Manager',        desc: 'Manage tasks & assets (preview)' },
-      { role: R.DESIGNER,             icon: '🎨', label: 'Designer',       desc: 'Design assignments (preview)' },
-      { role: R.SOCIAL_MEDIA_INTERN,  icon: '📱', label: 'Social Intern',  desc: 'Content & social (preview)' },
+      { role: R.ADMIN,                icon: '🛡️', label: 'Admin',               desc: 'Full system access' },
+      { role: R.DIRECTOR,             icon: '👔', label: 'Marketing Director',   desc: 'Approve & oversee (preview)' },
+      { role: R.MANAGER,              icon: '📋', label: 'Marketing Manager',    desc: 'Manage tasks & assets (preview)' },
+      { role: R.DESIGNER,             icon: '🎨', label: 'Graphic Designer',     desc: 'Design assignments (preview)' },
+      { role: R.SOCIAL_MEDIA_INTERN,  icon: '📱', label: 'Social Media Intern',  desc: 'Content & social (preview)' },
     ];
     body.innerHTML = roles.map(r => `
       <button class="role-option ${r.role === activeRole ? 'active' : ''}" onclick="App.switchRole('${r.role}')">
@@ -272,7 +268,6 @@ const App = (() => {
     init, navigate, refresh, updateHeader, showModal, closeModal,
     openMoreDrawer, closeMoreDrawer,
     openRoleSwitcher, closeRoleSwitcher, switchRole, exitPreview,
-    ROLE_LABELS,
   };
 })();
 

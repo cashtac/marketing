@@ -12,16 +12,16 @@
 const Store = (() => {
 
   /* ═══ Seed Version — bump to force reseed ═══ */
-  const VERSION = '2026-02-11-v3';
+  const VERSION = '2026-02-11-v4';
   const VERSION_KEY = 'ims_seed_version';
 
   /* ═══ Role Constants ═══ */
   const ROLES = {
-    ADMIN: 'ADMIN',
-    DIRECTOR: 'DIRECTOR',
-    MANAGER: 'MANAGER',
-    DESIGNER: 'DESIGNER',
-    SOCIAL_MEDIA_INTERN: 'SOCIAL_MEDIA_INTERN',
+    ADMIN: 'Admin',
+    DIRECTOR: 'Marketing Director',
+    MANAGER: 'Marketing Manager',
+    DESIGNER: 'Graphic Designer',
+    SOCIAL_MEDIA_INTERN: 'Social Media Intern',
   };
   const ALL_ROLES = Object.values(ROLES);
   const MARKETING_TEAM = [...ALL_ROLES];                             // everyone
@@ -91,7 +91,7 @@ const Store = (() => {
   // API: GET /api/settings · PUT /api/settings
   function getSettings() {
     return _get(KEYS.settings) || {
-      role: 'ADMIN',
+      role: 'Admin',
       name: 'Daniil Osipov',
       avatar: ''
     };
