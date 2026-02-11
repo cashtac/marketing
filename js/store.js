@@ -12,7 +12,7 @@
 const Store = (() => {
 
   /* ═══ Seed Version — bump to force reseed ═══ */
-  const VERSION = '2026-02-11-v4';
+  const VERSION = '2026-02-11-v5';
   const VERSION_KEY = 'ims_seed_version';
 
   /* ═══ Role Constants ═══ */
@@ -648,6 +648,16 @@ const Store = (() => {
     if (locsDirty) saveLocations(locs);
     saveTasks(tasks);
   }
+  /* ── Seed integrity — auto-reseed if critical data is missing ── */
+  function _validateSeed() {
+    const critical = [KEYS.team, KEYS.locations, KEYS.campaigns, KEYS.tasks];
+    for (const k of critical) {
+      const val = _get(k);
+      if (!val || (Array.isArray(val) && val.length === 0)) return false;
+    }
+    return true;
+  }
+
   /* ── Seed data ── */
   function seed() {
     // ?reset=1 URL param forces full reseed
@@ -660,7 +670,7 @@ const Store = (() => {
     }
     // Versioned seed: if version mismatch, clear and reseed
     const storedVersion = localStorage.getItem(VERSION_KEY);
-    if (storedVersion === VERSION && _get(KEYS.team)) return; // already seeded with current version
+    if (storedVersion === VERSION && _validateSeed()) return; // already seeded and healthy
     if (storedVersion !== VERSION) { clearAll(); }
     localStorage.setItem(VERSION_KEY, VERSION);
 
@@ -809,11 +819,18 @@ const Store = (() => {
     const campWeighWaste = { id: 'camp-weigh-waste', name: 'Weigh the Waste with Gabby', type: 'event', description: 'Weigh the Waste sustainability event with Gabby. 12pm at Southside.', start_date: '2026-02-25', end_date: '2026-02-25', removal_date: '2026-02-26', status: 'active', createdAt: _now() };
     const campCasino2 = { id: 'camp-casino2', name: 'Supper Club: Casino Night (Calendar)', type: 'event', description: 'Supper Club Casino Night at The Globe. 6–8pm. (Calendar entry)', start_date: '2026-02-27', end_date: '2026-02-27', removal_date: '2026-02-28', status: 'active', createdAt: _now() };
 
+    /* ── Promo campaigns (from onsite posters) ── */
+    const promoHotHoney = { id: 'camp-hot-honey', name: 'Hot Honey Sandwich', type: 'promo', description: 'HOT HONEY SANDWICH — $4.99. Options: Hot Honey on a Bun with Egg & Smoked Turkey (Halal), or on a Biscuit with Egg & Sausage. Available at The Eaterie / Fairfax Street Subs.', start_date: '2026-02-01', end_date: '2026-03-31', status: 'active', createdAt: _now() };
+    const promoHeartToTable = { id: 'camp-heart-table', name: 'Heart to Table', type: 'promo', description: 'Heart-shaped cookie treat — only $1.99! Sweeten someone\'s day with a warm, heart-shaped treat. Pickup at JC Market, Blue Ridge Market, or The Eaterie. While supplies last.', start_date: '2026-02-01', end_date: '2026-02-28', status: 'active', createdAt: _now() };
+    const promoSevenBuck = { id: 'camp-seven-buck', name: 'Seven Buck Case Craze', type: 'promo', description: 'SEVEN BUCK CASE CRAZE — Select Monster 4-packs for $7.00. Limited time offer.', start_date: '2026-02-01', end_date: '2026-03-31', status: 'active', createdAt: _now() };
+    const promoCoffeeTea = { id: 'camp-coffee-tea', name: 'Unlimited Coffee & Tea — 30% Off', type: 'promo', description: '30% OFF — LIMITED TIME ONLY. Enjoy unlimited roasted black coffee and tea till May 16, 2026. Available at campus markets.', start_date: '2026-02-01', end_date: '2026-05-16', status: 'active', createdAt: _now() };
+
     saveCampaigns([camp1, camp2, camp3,
       campCasino, campChocChar, campValCook, campFanFoodie, campFebCal,
       campVegPho, campCoffeeScrub, campMilkHoney, campShawarma, campFanFoodie2,
       campMeetMegan, campTeachWill, campChocChar2, campDelight, campDunkin,
-      campWeighWaste, campCasino2
+      campWeighWaste, campCasino2,
+      promoHotHoney, promoHeartToTable, promoSevenBuck, promoCoffeeTea
     ]);
 
     /* Display Units seed */

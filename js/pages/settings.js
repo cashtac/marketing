@@ -3,10 +3,10 @@ const SettingsPage = (() => {
   const R = Store.ROLES;
   const ROLE_LIST = [
     { key: R.ADMIN,               label: 'Admin' },
-    { key: R.DIRECTOR,            label: 'Director' },
-    { key: R.MANAGER,             label: 'Manager' },
-    { key: R.DESIGNER,            label: 'Designer' },
-    { key: R.SOCIAL_MEDIA_INTERN, label: 'Social Intern' },
+    { key: R.DIRECTOR,            label: 'Marketing Director' },
+    { key: R.MANAGER,             label: 'Marketing Manager' },
+    { key: R.DESIGNER,            label: 'Graphic Designer' },
+    { key: R.SOCIAL_MEDIA_INTERN, label: 'Social Media Intern' },
   ];
 
   function render() {
@@ -60,7 +60,11 @@ const SettingsPage = (() => {
           </div>` : ''}
           ${canClear ? `
           <div class="settings-item">
-            <span class="settings-label">Reset All Data</span>
+            <span class="settings-label">Reset Demo Data</span>
+            <button class="btn btn-secondary btn-sm" onclick="SettingsPage.resetDemo()">Reset Seed</button>
+          </div>
+          <div class="settings-item">
+            <span class="settings-label">Clear All Data</span>
             <button class="btn btn-danger btn-sm" onclick="SettingsPage.clearData()">Clear Data</button>
           </div>` : ''}
         </div>` : ''}
@@ -128,5 +132,13 @@ const SettingsPage = (() => {
   function _esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
   function _initials(n) { return (n || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2); }
 
-  return { render, save, exportData, clearData };
+  function resetDemo() {
+    if (!Store.Permissions.can('clear_data')) return;
+    Store.clearAll();
+    Store.seed();
+    App.refresh();
+    App.updateHeader();
+  }
+
+  return { render, save, exportData, clearData, resetDemo };
 })();
