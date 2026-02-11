@@ -1330,3 +1330,51 @@ body.has-preview-banner .app-content { padding-top: calc(var(--header-height) + 
 .camp-pick-expired { opacity: 0.6; }
 .camp-pick-name { font-size: 0.82rem; font-weight: 600; }
 .camp-pick-meta { font-size: 0.65rem; color: var(--text-light); display: flex; align-items: center; gap: 4px; margin-top: 2px; flex-wrap: wrap; }
+
+/* ═══════════════════════════════════════════════
+   Bottom Nav Safe-Area Patch
+   ═══════════════════════════════════════════════ */
+:root {
+  --nav-h: 68px;
+}
+
+/* Make sure the page content never hides behind the fixed bottom nav */
+#app-content, main#app-content, .app-content, main {
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom, 0px));
+}
+
+/* Bottom nav: fixed + safe area */
+.bottom-nav {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: var(--nav-h);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  z-index: 9999;
+}
+
+/* Prevent overflow / wrapping */
+.bottom-nav .nav-item {
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Ensure icons/text fit */
+.bottom-nav .nav-item span {
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Drawer: if you use fixed positioning, ensure safe area too */
+.drawer, .more-drawer {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Fix 100vh issues on iOS */
+body, html {
+  height: 100%;
+}

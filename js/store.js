@@ -1,5 +1,53 @@
-/* ─── Store — localStorage persistence layer ─── */
+/* ─── Store — localStorage + API adapter layer ─── */
+/*
+ * Dual-mode data layer:
+ *   API_ENABLED = false  →  all reads/writes go to localStorage (current)
+ *   API_ENABLED = true   →  all reads/writes go to /api/* via fetch
+ *
+ * When backend is ready:
+ *   1. Deploy Cloudflare Functions under /functions/api/
+ *   2. Set API_ENABLED = true
+ *   3. Convert page-level callers to async/await (second pass)
+ */
 const Store = (() => {
+
+  /* ═══ API Adapter Config ═══ */
+  const API_ENABLED = false;
+  const API_BASE = '/api';  // Cloudflare Functions base path
+
+  async function apiGet(path) {
+    const res = await fetch(`${API_BASE}${path}`);
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  async function apiPost(path, body) {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  async function apiPut(path, body) {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  async function apiDelete(path) {
+    const res = await fetch(`${API_BASE}${path}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  }
+
+  /* ═══ localStorage Keys ═══ */
   const KEYS = {
     tasks: 'ims_tasks',
     approvals: 'ims_approvals',
@@ -23,6 +71,7 @@ const Store = (() => {
   const _now = () => new Date().toISOString();
 
   /* ── Settings ── */
+  // API: GET /api/settings · PUT /api/settings
   function getSettings() {
     return _get(KEYS.settings) || {
       role: 'Admin',
@@ -33,6 +82,7 @@ const Store = (() => {
   function saveSettings(s) { _set(KEYS.settings, s); }
 
   /* ── Team ── */
+  // API: GET /api/team · POST /api/team · PUT /api/team/:id · DELETE /api/team/:id
   function getTeam() { return _get(KEYS.team) || []; }
   function saveTeam(t) { _set(KEYS.team, t); }
   function addTeamMember(m) {
@@ -52,6 +102,7 @@ const Store = (() => {
   }
 
   /* ── Tasks ── */
+  // API: GET /api/tasks · POST /api/tasks · PUT /api/tasks/:id · DELETE /api/tasks/:id
   function getTasks() { return _get(KEYS.tasks) || []; }
   function saveTasks(t) { _set(KEYS.tasks, t); }
   function addTask(t) {
@@ -86,6 +137,7 @@ const Store = (() => {
   }
 
   /* ── Approvals ── */
+  // API: GET /api/approvals · POST /api/approvals · PUT /api/approvals/:id · POST /api/approvals/:id/comments
   function getApprovals() { return _get(KEYS.approvals) || []; }
   function saveApprovals(a) { _set(KEYS.approvals, a); }
   function addApproval(a) {
@@ -125,6 +177,7 @@ const Store = (() => {
   }
 
   /* ── Assets ── */
+  // API: GET /api/assets · POST /api/assets · PUT /api/assets/:id · DELETE /api/assets/:id
   function getAssets() { return _get(KEYS.assets) || []; }
   function saveAssets(a) { _set(KEYS.assets, a); }
   function addAsset(a) {
@@ -156,6 +209,7 @@ const Store = (() => {
   }
 
   /* ── Content (Video / Social) ── */
+  // API: GET /api/content · POST /api/content · PUT /api/content/:id · DELETE /api/content/:id
   function getContent() { return _get(KEYS.content) || []; }
   function saveContent(c) { _set(KEYS.content, c); }
 
@@ -188,6 +242,7 @@ const Store = (() => {
   }
 
   /* ── Locations & Screens ── */
+  // API: GET /api/locations · POST /api/locations · PUT /api/locations/:id · DELETE /api/locations/:id
   function getLocations() { return _get(KEYS.locations) || []; }
   function saveLocations(l) { _set(KEYS.locations, l); }
 
@@ -300,6 +355,7 @@ const Store = (() => {
   }
 
   /* ── Campaigns ── */
+  // API: GET /api/campaigns · POST /api/campaigns · PUT /api/campaigns/:id · DELETE /api/campaigns/:id
   function getCampaigns() { return _get(KEYS.campaigns) || []; }
   function saveCampaigns(c) { _set(KEYS.campaigns, c); }
   function addCampaign(c) {
@@ -318,6 +374,22 @@ const Store = (() => {
   }
   function deleteCampaign(id) {
     saveCampaigns(getCampaigns().filter(c => c.id !== id));
+  }
+
+  /* Upcoming events — campaigns with type 'event' within N days */
+  function getUpcomingEvents(daysAhead = 7) {
+    const campaigns = getCampaigns();
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const end = new Date(now);
+    end.setDate(end.getDate() + daysAhead);
+
+    return campaigns
+      .filter(c => (c.type || '').toLowerCase() === 'event')
+      .filter(c => c.start_date)
+      .map(c => ({ ...c, _start: new Date(c.start_date + 'T00:00:00') }))
+      .filter(c => c._start >= now && c._start <= end)
+      .sort((a, b) => a._start - b._start);
   }
 
   /* ── Display Units ── */
@@ -832,11 +904,13 @@ const Store = (() => {
     addZone, updateZone, deleteZone,
     addPlacement, updatePlacement, deletePlacement,
     assignContent, removeContent,
-    getCampaigns, saveCampaigns, addCampaign, updateCampaign, deleteCampaign,
+    getCampaigns, saveCampaigns, addCampaign, updateCampaign, deleteCampaign, getUpcomingEvents,
     getDisplayUnits, saveDisplayUnits, addDisplayUnit, updateDisplayUnit, deleteDisplayUnit,
     getActivity, addActivity,
     nextStatus, prevStatus, STATUS_ORDER,
     Permissions,
     seed, clearAll, checkExpiryAndCreateTasks,
+    /* API adapter — use when API_ENABLED is flipped to true */
+    API_ENABLED, apiGet, apiPost, apiPut, apiDelete,
   };
 })();

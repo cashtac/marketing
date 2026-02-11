@@ -27,10 +27,13 @@ const DashboardPage = (() => {
     // Pending approvals
     const pendingApprovals = approvals.filter(a => a.status === 'pending');
 
-    // Tomorrow's events
+    // Tomorrow's events (kept for attention banner count)
     const tomorrowEvents = campaigns.filter(c =>
       c.type === 'event' && c.start_date && c.start_date === tomorrowStr
     );
+
+    // Upcoming events (next 7 days) via Store helper
+    const upcomingEvents = Store.getUpcomingEvents(7);
 
     // Expiring placements (removal within 3 days)
     const expiringPlacements = [];
@@ -77,7 +80,7 @@ const DashboardPage = (() => {
         ${_renderOverdueTasks(overdueTasks)}
         ${_renderExpiringPlacements(expiringPlacements)}
         ${Store.Permissions.canAccessPage('approvals') ? _renderPendingApprovals(pendingApprovals) : ''}
-        ${_renderTomorrowEvents(tomorrowEvents)}
+        ${_renderUpcomingEvents(upcomingEvents)}
         ${_renderWeekOverview(tasksDueThisWeek, eventsThisWeek, expiringPlacements, activeTasks)}
       </div>
     `;
@@ -148,12 +151,24 @@ const DashboardPage = (() => {
     `;
   }
 
-  /* ── Tomorrow's Events ── */
-  function _renderTomorrowEvents(events) {
+  /* ── Upcoming Events ── */
+  function _renderUpcomingEvents(events) {
     if (!events.length) return '';
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+
+    function _dayLabel(dateStr) {
+      if (dateStr === todayStr) return '📍 Today';
+      if (dateStr === tomorrowStr) return '📅 Tomorrow';
+      try {
+        return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      } catch { return dateStr; }
+    }
+
     return `
       <div class="section-header" style="margin-top:8px">
-        <span class="section-title">📅 Tomorrow's Events</span>
+        <span class="section-title">📅 Upcoming Events</span>
         <span class="section-count">${events.length}</span>
       </div>
       ${events.map(c => `
@@ -161,6 +176,7 @@ const DashboardPage = (() => {
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
             <span style="font-size:1.1rem">🎉</span>
             <span style="font-weight:600;font-size:0.88rem;flex:1">${_esc(c.name)}</span>
+            <span style="font-size:0.65rem;font-weight:600;color:var(--pink-500);white-space:nowrap">${_dayLabel(c.start_date)}</span>
           </div>
           <div style="font-size:0.72rem;color:var(--text-muted)">${_esc(c.description || '').slice(0, 80)}</div>
         </div>
