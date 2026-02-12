@@ -13,19 +13,15 @@
 </head>
 <body>
 
-  <!-- Preview Mode Banner -->
-  <div class="preview-banner" id="preview-banner" style="display:none">
-    <span>Preview Mode — <strong id="preview-role-name"></strong></span>
-    <button onclick="App.exitPreview()">Exit Preview</button>
-  </div>
-
   <!-- Header -->
   <header class="app-header" id="app-header">
     <div class="logo">
       <div class="logo-icon">M</div>
-      <span>Marketing</span>
+      <span id="header-title">Marketing Admin</span>
     </div>
-    <button id="role-badge" class="role-badge" type="button" onclick="App.openRoleSwitcher()">Admin</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button id="role-badge" class="role-badge" type="button" onclick="App.openRoleSwitcher()">Admin</button>
+    </div>
   </header>
 
   <!-- Content -->
@@ -97,6 +93,8 @@
   <script src="js/pages/ideas.js"></script>
   <script src="js/pages/command.js"></script>
   <script src="js/pages/org-preview.js"></script>
+  <script src="js/calendar-export.js"></script>
+  <script src="js/pages/threads.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

@@ -276,11 +276,6 @@ body.admin-scope .card-meta  { color: #8FA4C3; }
 body.admin-scope .assignee-name { color: #E8EDF5; }
 body.admin-scope .due-date { color: #5A6E8A; }
 
-/* ── Preview banner (admin mode) ── */
-body.admin-scope .preview-banner {
-  background: linear-gradient(90deg, #2F6BFF, #1A4BBF);
-}
-
 /* ── Org Preview overlay — dark override ── */
 body.admin-scope #org-preview-overlay {
   background: #0B1220;

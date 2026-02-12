@@ -2,7 +2,23 @@
 const App = (() => {
   let _currentPage = 'dashboard';
 
-  /* Role labels for display — roles are already human-readable */
+  /* Friendly role names — single source of truth */
+  const FRIENDLY_NAMES = {};
+  function _initFriendlyNames() {
+    const R = Store.ROLES;
+    Object.assign(FRIENDLY_NAMES, {
+      [R.ADMIN]: 'Marketing Admin',
+      [R.OPERATIONS]: 'Operations',
+      [R.DIRECTOR]: 'Marketing Director',
+      [R.CONTROLLER]: 'Controller',
+      [R.MANAGER]: 'Marketing Manager',
+      [R.DESIGNER]: 'Graphic Designer',
+      [R.SOCIAL_MEDIA_INTERN]: 'Social Media Intern',
+      [R.PHOTOGRAPHER]: 'Photographer',
+      [R.SUSTAINABILITY]: 'Sustainability',
+      [R.DIETITIAN]: 'Dietitian',
+    });
+  }
 
   const PAGES = {
     dashboard:    () => DashboardPage.render(),
@@ -19,6 +35,7 @@ const App = (() => {
     admin:        () => AdminPage.render(),
     ideas:        () => IdeasPage.render(),
     command:      () => CommandPage.render(),
+    threads:      () => ThreadsPage.render(),
     'org-preview': () => OrgPreviewPage.render(),
     settings:     () => SettingsPage.render(),
     taskview:     () => TaskViewPage.render(),
@@ -28,10 +45,11 @@ const App = (() => {
   };
 
   /* Pages that live under the "More" drawer (not primary nav tabs) */
-  const MORE_PAGES = ['approvals','assets','content','campaigns','team','controller','feedback','notifications','admin','ideas','command','org-preview','settings'];
+  const MORE_PAGES = ['approvals','assets','content','campaigns','team','controller','feedback','notifications','admin','ideas','command','org-preview','threads','settings'];
 
   function init() {
     Store.seed();
+    _initFriendlyNames();
 
     /* ── Auth Gate ── */
     AuthManager.seedUsers();
@@ -164,7 +182,6 @@ const App = (() => {
     const container = document.getElementById('app-content');
     container.innerHTML = PAGES[_currentPage]();
     _updateNav();
-    _updatePreviewBanner();
     _updateThemeScope();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -185,9 +202,12 @@ const App = (() => {
       : _currentPage;
 
     const isMorePage = MORE_PAGES.includes(activePage);
+    const visibleTabs = Store.Permissions.navTabs();
 
     document.querySelectorAll('.nav-item').forEach(n => {
       const pg = n.dataset.page;
+      /* Show/hide based on role nav config */
+      n.style.display = visibleTabs.includes(pg) ? '' : 'none';
       if (pg === 'more') {
         n.classList.toggle('active', isMorePage);
       } else {
@@ -198,53 +218,34 @@ const App = (() => {
 
   function updateHeader() {
     const badge = document.getElementById('role-badge');
+    const title = document.getElementById('header-title');
     if (!badge) return;
     const activeRole = Store.getActiveRole();
     const session = AuthManager.getSession();
-    badge.textContent = activeRole;
-    /* Only Admin/Operations users can switch roles (preview mode) */
-    const isRealAdmin = session && (session.role === Store.ROLES.ADMIN || session.role === Store.ROLES.OPERATIONS);
-    if (isRealAdmin) {
-      badge.onclick = () => App.openRoleSwitcher();
-      badge.style.cursor = 'pointer';
-    } else {
-      badge.onclick = null;
-      badge.style.cursor = 'default';
-    }
+    const friendly = FRIENDLY_NAMES[activeRole] || activeRole;
+    /* Dynamic header title */
+    if (title) title.textContent = friendly;
+
     if (Store.isPreviewMode()) {
+      /* Preview mode: badge becomes exit button */
+      badge.textContent = 'Exit Preview ✕';
+      badge.onclick = () => App.exitPreview();
+      badge.style.cursor = 'pointer';
       badge.style.background = 'var(--warning, #E8A640)';
       badge.style.color = '#fff';
     } else {
+      /* Normal mode: badge shows role, click opens switcher */
+      badge.textContent = friendly;
+      const isRealAdmin = session && (session.role === Store.ROLES.ADMIN || session.role === Store.ROLES.OPERATIONS);
+      if (isRealAdmin) {
+        badge.onclick = () => App.openRoleSwitcher();
+        badge.style.cursor = 'pointer';
+      } else {
+        badge.onclick = null;
+        badge.style.cursor = 'default';
+      }
       badge.style.background = '';
       badge.style.color = '';
-    }
-  }
-
-  /* ── Preview Banner ── */
-  function _updatePreviewBanner() {
-    const banner = document.getElementById('preview-banner');
-    const roleName = document.getElementById('preview-role-name');
-    if (!banner) return;
-    if (Store.isPreviewMode()) {
-      const roleKey = Store.getActiveRole();
-      const R = Store.ROLES;
-      const friendlyNames = {
-        [R.OPERATIONS]: 'Operations',
-        [R.DIRECTOR]: 'Marketing Director',
-        [R.CONTROLLER]: 'Controller',
-        [R.MANAGER]: 'Marketing Manager',
-        [R.DESIGNER]: 'Graphic Designer',
-        [R.SOCIAL_MEDIA_INTERN]: 'Social Media Intern',
-        [R.PHOTOGRAPHER]: 'Photographer',
-        [R.SUSTAINABILITY]: 'Sustainability',
-        [R.DIETITIAN]: 'Dietitian',
-      };
-      roleName.textContent = friendlyNames[roleKey] || roleKey;
-      banner.style.display = 'flex';
-      document.body.classList.add('has-preview-banner');
-    } else {
-      banner.style.display = 'none';
-      document.body.classList.remove('has-preview-banner');
     }
   }
 

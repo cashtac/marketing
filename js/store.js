@@ -12,7 +12,7 @@
 const Store = (() => {
 
   /* ═══ Seed Version — bump to force reseed ═══ */
-  const VERSION = '2026-02-11-v7';
+  const VERSION = '2026-02-12-v9';
   const VERSION_KEY = 'ims_seed_version';
 
   /* ═══ Role Constants ═══ */
@@ -85,6 +85,11 @@ const Store = (() => {
     orgRoles: 'ims_org_roles',
     orgPeople: 'ims_org_people',
     ideas: 'ims_ideas',
+    roleNavConfig: 'ims_role_nav_config',
+    roleHomeMode: 'ims_role_home_mode',
+    threadChannels: 'ims_thread_channels',
+    threads: 'ims_threads',
+    threadMessages: 'ims_thread_messages',
   };
 
   /* ── Helpers ── */
@@ -124,6 +129,96 @@ const Store = (() => {
   function getActiveRole() { return _previewRole || getSettings().role; }
   function isAdminMode() { return !_previewRole && getSettings().role === ROLES.ADMIN; }
   function isPreviewMode() { return _previewRole != null; }
+
+  /* ── Role Nav Config (admin-configurable bottom tabs per role) ── */
+  function _defaultNavConfig() {
+    return {
+      [ROLES.ADMIN]:                { dashboard: true, tasks: true, locations: true, more: true },
+      [ROLES.OPERATIONS]:           { dashboard: true, tasks: true, locations: true, more: true },
+      [ROLES.DIRECTOR]:             { dashboard: true, tasks: true, locations: true, more: true },
+      [ROLES.CONTROLLER]:           { dashboard: true, tasks: false, locations: false, more: true },
+      [ROLES.MANAGER]:              { dashboard: true, tasks: true, locations: true, more: true },
+      [ROLES.DESIGNER]:             { dashboard: true, tasks: true, locations: true, more: true },
+      [ROLES.SOCIAL_MEDIA_INTERN]:  { dashboard: true, tasks: true, locations: false, more: true },
+      [ROLES.PHOTOGRAPHER]:         { dashboard: true, tasks: false, locations: false, more: true },
+      [ROLES.SUSTAINABILITY]:       { dashboard: true, tasks: false, locations: true, more: true },
+      [ROLES.DIETITIAN]:            { dashboard: true, tasks: false, locations: false, more: true },
+    };
+  }
+  function getRoleNavConfig() {
+    return _get(KEYS.roleNavConfig) || _defaultNavConfig();
+  }
+  function saveRoleNavConfig(cfg) {
+    _set(KEYS.roleNavConfig, cfg);
+  }
+
+  /* ── Role Home Mode (admin-configurable) ── */
+  function _defaultHomeMode() {
+    const m = {};
+    ALL_ROLES.forEach(r => m[r] = r === ROLES.ADMIN ? 'strategic' : 'chat');
+    return m;
+  }
+  function getRoleHomeMode() {
+    return _get(KEYS.roleHomeMode) || _defaultHomeMode();
+  }
+  function saveRoleHomeMode(cfg) {
+    _set(KEYS.roleHomeMode, cfg);
+  }
+
+  /* ── Thread Channels ── */
+  function getThreadChannels() { return _get(KEYS.threadChannels) || []; }
+  function saveThreadChannels(c) { _set(KEYS.threadChannels, c); }
+
+  /* ── Threads ── */
+  function getThreads() { return _get(KEYS.threads) || []; }
+  function saveThreads(t) { _set(KEYS.threads, t); }
+  function addThread(t) {
+    const list = getThreads();
+    t.id = 'thread_' + _id();
+    t.createdAt = _now();
+    list.unshift(t);
+    saveThreads(list);
+    return t;
+  }
+
+  /* ── Thread Messages ── */
+  function getThreadMessages() { return _get(KEYS.threadMessages) || []; }
+  function saveThreadMessages(m) { _set(KEYS.threadMessages, m); }
+  function addThreadMessage(m) {
+    const list = getThreadMessages();
+    m.id = 'tmsg_' + _id();
+    m.createdAt = _now();
+    if (!m.reactions) m.reactions = {};
+    list.push(m);
+    saveThreadMessages(list);
+    return m;
+  }
+  function addThreadReaction(msgId, emoji, user) {
+    const list = getThreadMessages();
+    const msg = list.find(m => m.id === msgId);
+    if (!msg) return;
+    if (!msg.reactions) msg.reactions = {};
+    if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+    if (!msg.reactions[emoji].includes(user)) {
+      msg.reactions[emoji].push(user);
+    }
+    saveThreadMessages(list);
+  }
+  function toggleThreadReaction(msgId, emoji, user) {
+    const list = getThreadMessages();
+    const msg = list.find(m => m.id === msgId);
+    if (!msg) return;
+    if (!msg.reactions) msg.reactions = {};
+    if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+    const idx = msg.reactions[emoji].indexOf(user);
+    if (idx > -1) {
+      msg.reactions[emoji].splice(idx, 1);
+      if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+    } else {
+      msg.reactions[emoji].push(user);
+    }
+    saveThreadMessages(list);
+  }
 
   /* ── Team ── */
   // API: GET /api/team · POST /api/team · PUT /api/team/:id · DELETE /api/team/:id
@@ -933,6 +1028,101 @@ const Store = (() => {
     ];
     saveComments(seedComments);
 
+    /* ── Thread Channels + Threads + Messages Seed ── */
+    const threadChannels = [
+      { id: 'ch-operations',    name: 'Operations',          icon: '⚙️', description: 'Operations updates & coordination' },
+      { id: 'ch-marketing',     name: 'Marketing',           icon: '📣', description: 'Marketing campaigns & creative' },
+      { id: 'ch-finance',       name: 'Controller / Finance', icon: '💰', description: 'Budget, invoices, and financial updates' },
+      { id: 'ch-sustainability',name: 'Sustainability',      icon: '🌿', description: 'Green initiatives & waste reduction' },
+      { id: 'ch-dining',        name: 'Dining Halls',        icon: '🍽️', description: 'Dining hall operations & menus' },
+      { id: 'ch-retail',        name: 'Retail',              icon: '🏪', description: 'Retail locations & promotions' },
+      { id: 'ch-catering',      name: 'Catering',            icon: '🎂', description: 'Catering orders & event services' },
+    ];
+    saveThreadChannels(threadChannels);
+
+    const seedThreads = [
+      // Operations
+      { id: 'th-ops-1', channelId: 'ch-operations', title: 'Weekly Ops Sync — Feb 12', author: 'Jordan Lee', preview: 'Agenda: staffing updates, equipment maintenance, campus coverage review.', pinned: true, createdAt: '2026-02-12T08:00:00Z' },
+      { id: 'th-ops-2', channelId: 'ch-operations', title: 'Southside display unit needs maintenance', author: 'Jordan Lee', preview: 'The entrance digital sign at Southside has been flickering. Maintenance scheduled for Thursday.', pinned: false, createdAt: '2026-02-11T14:00:00Z', linkedTaskId: 'task-spring-banners', linkedTaskName: 'Design Spring Campaign Banners' },
+      { id: 'th-ops-3', channelId: 'ch-operations', title: 'Staff scheduling conflict — Feb 14', author: 'Taylor Kim', preview: 'Two staff members called out for Valentine\'s Day shift. Need coverage.', pinned: false, createdAt: '2026-02-11T09:30:00Z' },
+      // Marketing
+      { id: 'th-mkt-1', channelId: 'ch-marketing', title: 'Spring Campaign Creative Direction', author: 'Katie Kennedy', preview: 'Let\'s align on the creative direction for the spring campaign. Mood board attached.', pinned: true, createdAt: '2026-02-10T10:00:00Z', linkedTaskId: 'task-spring-banners', linkedTaskName: 'Design Spring Campaign Banners' },
+      { id: 'th-mkt-2', channelId: 'ch-marketing', title: 'Casino Night — Social Media Plan', author: 'Masha Alieva', preview: 'Proposing countdown posts starting Feb 22. Need photo assets from the venue.', pinned: false, createdAt: '2026-02-11T11:00:00Z', linkedEventId: 'camp-casino-night', linkedEventName: 'Supper Club: Casino Night' },
+      { id: 'th-mkt-3', channelId: 'ch-marketing', title: 'Instagram Reel Script Review', author: 'Masha Alieva', preview: 'Draft script for the 30-second spring reel. Feedback welcome!', pinned: false, createdAt: '2026-02-10T16:00:00Z' },
+      { id: 'th-mkt-4', channelId: 'ch-marketing', title: 'Delight-FUL Week Planning', author: 'Katie Kennedy', preview: 'Random acts of joy across campus — Feb 16-20. Need volunteers to coordinate.', pinned: false, createdAt: '2026-02-09T13:00:00Z', linkedEventId: 'camp-delight', linkedEventName: 'Delight-FUL: A Week of Random Acts of Joy' },
+      // Finance
+      { id: 'th-fin-1', channelId: 'ch-finance', title: 'Q1 Budget Report Draft', author: 'Taylor Kim', preview: 'First draft of Q1 budget report ready for review. Key highlights inside.', pinned: true, createdAt: '2026-02-11T09:00:00Z' },
+      { id: 'th-fin-2', channelId: 'ch-finance', title: 'Casino Night Budget Approval', author: 'Taylor Kim', preview: 'Casino Night event budget needs final sign-off. Total: $2,400.', pinned: false, createdAt: '2026-02-10T14:00:00Z', linkedEventId: 'camp-casino-night', linkedEventName: 'Supper Club: Casino Night' },
+      // Sustainability
+      { id: 'th-sus-1', channelId: 'ch-sustainability', title: 'Weigh the Waste — Feb 25 Prep', author: 'Gabby Green', preview: 'Setting up at Southside 1st floor. Need scale + signage. Volunteers?', pinned: true, createdAt: '2026-02-11T10:00:00Z', linkedEventId: 'camp-weigh-waste', linkedEventName: 'Weigh the Waste with Gabby' },
+      { id: 'th-sus-2', channelId: 'ch-sustainability', title: 'Compost bin placement update', author: 'Gabby Green', preview: 'New compost bins installed at Globe and Ike\'s. Monitoring usage this week.', pinned: false, createdAt: '2026-02-10T11:00:00Z' },
+      // Dining Halls
+      { id: 'th-din-1', channelId: 'ch-dining', title: 'Valentine\'s Day Menu — Ike\'s', author: 'Jordan Lee', preview: 'Special Valentine\'s menu options finalized. Need to update digital boards.', pinned: false, createdAt: '2026-02-11T08:30:00Z' },
+      { id: 'th-din-2', channelId: 'ch-dining', title: 'Teaching Kitchen with Chef Will — Feb 12', author: 'Jordan Lee', preview: 'Today\'s Teaching Kitchen event at Ike\'s Multipurpose Room, 2-4 PM. All prep confirmed.', pinned: true, createdAt: '2026-02-12T07:00:00Z', linkedEventId: 'camp-teach-will', linkedEventName: 'Teaching Kitchen with Chef Will' },
+      // Retail
+      { id: 'th-ret-1', channelId: 'ch-retail', title: 'Heart to Table promo — restocking', author: 'Katie Kennedy', preview: 'Heart-shaped cookies selling fast at JC Market. Need to restock by Thursday.', pinned: false, createdAt: '2026-02-11T15:00:00Z' },
+      // Catering
+      { id: 'th-cat-1', channelId: 'ch-catering', title: 'Catering request — Business School Feb 20', author: 'Jordan Lee', preview: 'Business School requested lunch catering for 80 pax. Menu options needed by Feb 14.', pinned: true, createdAt: '2026-02-11T10:00:00Z' },
+      { id: 'th-cat-2', channelId: 'ch-catering', title: 'Dunkin\' Cruiser logistics — Feb 20', author: 'Jordan Lee', preview: 'Dunkin\' Cruiser confirmed for Feb 20. Parking permit and electrical hookup needed.', pinned: false, createdAt: '2026-02-10T16:00:00Z', linkedEventId: 'camp-dunkin', linkedEventName: 'Dunkin\' Cruiser | Love, Mason Dining' },
+    ];
+    saveThreads(seedThreads);
+
+    const seedMessages = [
+      // Ops weekly sync
+      { id: 'tm-1', threadId: 'th-ops-1', author: 'Jordan Lee', text: 'Good morning team. Key items for today: 1) Staffing gaps at Southside, 2) Display unit maintenance, 3) Coverage for Valentine\'s events.', createdAt: '2026-02-12T08:01:00Z', reactions: {'👍': ['Katie Kennedy','Taylor Kim']} },
+      { id: 'tm-2', threadId: 'th-ops-1', author: 'Taylor Kim', text: 'Budget note: we have $800 left in the Q1 maintenance fund. Should be enough for the Southside fix.', createdAt: '2026-02-12T08:05:00Z', reactions: {'💯': ['Jordan Lee']} },
+      { id: 'tm-3', threadId: 'th-ops-1', author: 'Daniil Osipov', text: 'Good. Let\'s make sure Casino Night prep doesn\'t impact regular operations.', createdAt: '2026-02-12T08:10:00Z', reactions: {'👍': ['Jordan Lee','Taylor Kim','Katie Kennedy']} },
+      // Ops display maintenance
+      { id: 'tm-4', threadId: 'th-ops-2', author: 'Jordan Lee', text: 'The entrance screen has been flickering intermittently. I\'ve filed a work order.', createdAt: '2026-02-11T14:01:00Z', reactions: {} },
+      { id: 'tm-5', threadId: 'th-ops-2', author: 'Daniil Osipov', text: 'Thanks Jordan. Can we get a backup poster in the frame until it\'s fixed?', createdAt: '2026-02-11T14:15:00Z', reactions: {'👍': ['Jordan Lee']} },
+      { id: 'tm-6', threadId: 'th-ops-2', author: 'Anna Simakova', text: 'I have a spring poster ready — I\'ll print it and drop it off tomorrow morning.', createdAt: '2026-02-11T14:30:00Z', reactions: {'🔥': ['Daniil Osipov','Jordan Lee']} },
+      // Ops staff conflict
+      { id: 'tm-7', threadId: 'th-ops-3', author: 'Taylor Kim', text: 'Can we pull someone from the Globe? They\'re overstaffed on Friday.', createdAt: '2026-02-11T09:45:00Z', reactions: {} },
+      { id: 'tm-8', threadId: 'th-ops-3', author: 'Jordan Lee', text: 'Good call. I\'ll reach out to Sam Chen to coordinate.', createdAt: '2026-02-11T10:00:00Z', reactions: {'👍': ['Taylor Kim']} },
+      // Marketing spring campaign
+      { id: 'tm-9', threadId: 'th-mkt-1', author: 'Katie Kennedy', text: 'The mood board is inspired by fresh greens and warm golds. Think spring farmers market vibes.', createdAt: '2026-02-10T10:05:00Z', reactions: {'❤️': ['Anna Simakova','Masha Alieva'],'🔥': ['Daniil Osipov']} },
+      { id: 'tm-10', threadId: 'th-mkt-1', author: 'Anna Simakova', text: 'Love it! I\'ll start on the banner concepts today. Should have drafts by Thursday.', createdAt: '2026-02-10T10:30:00Z', reactions: {'👍': ['Katie Kennedy']} },
+      { id: 'tm-11', threadId: 'th-mkt-1', author: 'DC', text: 'I can help with the web banner variants if needed.', createdAt: '2026-02-10T11:00:00Z', reactions: {'🎉': ['Katie Kennedy']} },
+      { id: 'tm-12', threadId: 'th-mkt-1', author: 'Sofya Vetrova', text: 'Great progress everyone. Remember: digital placements are priority over print this quarter.', createdAt: '2026-02-10T14:00:00Z', reactions: {'👍': ['Katie Kennedy','Anna Simakova','DC','Masha Alieva']} },
+      // Casino Night social plan
+      { id: 'tm-13', threadId: 'th-mkt-2', author: 'Masha Alieva', text: 'Countdown plan: Day 5 = teaser, Day 3 = menu peek, Day 1 = final reminder with RSVP link.', createdAt: '2026-02-11T11:05:00Z', reactions: {'🔥': ['Katie Kennedy']} },
+      { id: 'tm-14', threadId: 'th-mkt-2', author: 'Katie Kennedy', text: 'Perfect. I\'ll coordinate with the Globe manager for venue photos this week.', createdAt: '2026-02-11T11:30:00Z', reactions: {'👍': ['Masha Alieva']} },
+      { id: 'tm-15', threadId: 'th-mkt-2', author: 'Alex Photo', text: 'I can shoot the venue Wednesday afternoon. Will have edited photos by Friday.', createdAt: '2026-02-11T12:00:00Z', reactions: {'🎉': ['Masha Alieva','Katie Kennedy']} },
+      // Instagram reel
+      { id: 'tm-16', threadId: 'th-mkt-3', author: 'Masha Alieva', text: 'Script: Hook ("POV: your campus dining just leveled up") → Feature highlights (3 quick cuts) → CTA ("Link in bio").', createdAt: '2026-02-10T16:05:00Z', reactions: {} },
+      { id: 'tm-17', threadId: 'th-mkt-3', author: 'Sofya Vetrova', text: 'I like the hook. Can we add a quick shot of the actual food? Makes it more authentic.', createdAt: '2026-02-10T17:00:00Z', reactions: {'👍': ['Masha Alieva']} },
+      // Delight-FUL
+      { id: 'tm-18', threadId: 'th-mkt-4', author: 'Katie Kennedy', text: 'Ideas so far: free cookies at checkout, surprise drink upgrades, handwritten thank-you notes in to-go orders.', createdAt: '2026-02-09T13:05:00Z', reactions: {'❤️': ['Gabby Green','Masha Alieva'],'👀': ['Jordan Lee']} },
+      { id: 'tm-19', threadId: 'th-mkt-4', author: 'Gabby Green', text: 'Can we add a sustainability angle? Maybe plant-based treat options?', createdAt: '2026-02-09T14:00:00Z', reactions: {'🌿': ['Katie Kennedy']} },
+      // Finance Q1
+      { id: 'tm-20', threadId: 'th-fin-1', author: 'Taylor Kim', text: 'Summary: Total spend $42,600 of $55,000 budget. Digital advertising is 62% of spend. Print is 15%. Events 23%.', createdAt: '2026-02-11T09:05:00Z', reactions: {'👍': ['Daniil Osipov']} },
+      { id: 'tm-21', threadId: 'th-fin-1', author: 'Sofya Vetrova', text: 'Good to see we\'re under budget. Let\'s allocate the remaining funds to the spring campaign push.', createdAt: '2026-02-11T10:00:00Z', reactions: {'💯': ['Taylor Kim','Daniil Osipov']} },
+      // Casino budget
+      { id: 'tm-22', threadId: 'th-fin-2', author: 'Taylor Kim', text: 'Breakdown: Venue setup $800, Food & beverage $1,200, Decorations $250, Prizes $150.', createdAt: '2026-02-10T14:05:00Z', reactions: {} },
+      { id: 'tm-23', threadId: 'th-fin-2', author: 'Sofya Vetrova', text: 'Approved. Please file the PO by end of week.', createdAt: '2026-02-10T15:00:00Z', reactions: {'👍': ['Taylor Kim']} },
+      // Sustainability
+      { id: 'tm-24', threadId: 'th-sus-1', author: 'Gabby Green', text: 'Scale is ordered. I need 2 volunteers for weighing stations. Event runs 11am-1pm.', createdAt: '2026-02-11T10:05:00Z', reactions: {} },
+      { id: 'tm-25', threadId: 'th-sus-1', author: 'Jordan Lee', text: 'I can assign two Southside staff to help. Will confirm names by Thursday.', createdAt: '2026-02-11T11:00:00Z', reactions: {'🎉': ['Gabby Green']} },
+      // Compost
+      { id: 'tm-26', threadId: 'th-sus-2', author: 'Gabby Green', text: 'Day 1 results: Globe bin = 12 lbs collected, Ike\'s = 8 lbs. Good start!', createdAt: '2026-02-10T17:00:00Z', reactions: {'🔥': ['Jordan Lee'],'🌿': ['Katie Kennedy']} },
+      // Dining Valentine menu
+      { id: 'tm-27', threadId: 'th-din-1', author: 'Jordan Lee', text: 'Special items: heart-shaped pasta, chocolate fondue station, rose lemonade.', createdAt: '2026-02-11T08:35:00Z', reactions: {'❤️': ['Katie Kennedy','Masha Alieva']} },
+      { id: 'tm-28', threadId: 'th-din-1', author: 'Katie Kennedy', text: 'These are great! I\'ll design a quick poster for the entrance.', createdAt: '2026-02-11T09:00:00Z', reactions: {'👍': ['Jordan Lee']} },
+      // Teaching Kitchen
+      { id: 'tm-29', threadId: 'th-din-2', author: 'Jordan Lee', text: 'Chef Will confirmed. Ingredients procured. Room set up at 1:30 PM.', createdAt: '2026-02-12T07:05:00Z', reactions: {'👍': ['Daniil Osipov']} },
+      { id: 'tm-30', threadId: 'th-din-2', author: 'Masha Alieva', text: 'I\'ll be there to do live stories for Instagram!', createdAt: '2026-02-12T07:30:00Z', reactions: {'🔥': ['Jordan Lee','Katie Kennedy']} },
+      // Retail
+      { id: 'tm-31', threadId: 'th-ret-1', author: 'Katie Kennedy', text: 'JC Market sold 120 cookies in 2 days. We need at least 200 more for the rest of the week.', createdAt: '2026-02-11T15:05:00Z', reactions: {'😂': ['Masha Alieva']} },
+      { id: 'tm-32', threadId: 'th-ret-1', author: 'Jordan Lee', text: 'I\'ll coordinate with the bakery team. They can do a rush batch.', createdAt: '2026-02-11T15:30:00Z', reactions: {'👍': ['Katie Kennedy']} },
+      // Catering
+      { id: 'tm-33', threadId: 'th-cat-1', author: 'Jordan Lee', text: 'Standard lunch package options: A) Sandwich platter + sides ($12/pp), B) Hot buffet ($18/pp), C) Premium with dessert ($22/pp).', createdAt: '2026-02-11T10:05:00Z', reactions: {} },
+      { id: 'tm-34', threadId: 'th-cat-1', author: 'Taylor Kim', text: 'Budget-wise, option B fits best. Cross-check with the department\'s allocation.', createdAt: '2026-02-11T11:00:00Z', reactions: {'👍': ['Jordan Lee']} },
+      // Dunkin Cruiser
+      { id: 'tm-35', threadId: 'th-cat-2', author: 'Jordan Lee', text: 'Parking confirmed at lot K. Electrical hookup available. Need extension cords.', createdAt: '2026-02-10T16:05:00Z', reactions: {} },
+      { id: 'tm-36', threadId: 'th-cat-2', author: 'Katie Kennedy', text: 'Marketing-wise, this is going to be amazing for social content. I\'ll plan a photo op.', createdAt: '2026-02-10T17:00:00Z', reactions: {'🔥': ['Jordan Lee','Masha Alieva']} },
+    ];
+    saveThreadMessages(seedMessages);
+
     saveSettings({ role: ROLES.ADMIN, name: 'Daniil Osipov', username: 'daniil', avatar: '' });
   }
 
@@ -1032,16 +1222,16 @@ const Store = (() => {
   const Permissions = {
     /*  Which pages each role can see  */
     pages: {
-      [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','command','org-preview','settings'],
-      [ROLES.OPERATIONS]:           ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','command','org-preview','settings'],
-      [ROLES.CONTROLLER]:           ['dashboard','controller','campaigns','locations','settings'],
-      [ROLES.DIRECTOR]:             ['dashboard','approvals','content','campaigns','locations','notifications','ideas','settings'],
-      [ROLES.MANAGER]:              ['dashboard','tasks','approvals','assets','content','campaigns','locations','notifications','settings'],
-      [ROLES.DESIGNER]:             ['dashboard','tasks','assets','locations','notifications','settings'],
-      [ROLES.SOCIAL_MEDIA_INTERN]:  ['dashboard','tasks','content','notifications','settings'],
-      [ROLES.PHOTOGRAPHER]:         ['dashboard','assets','settings'],
-      [ROLES.SUSTAINABILITY]:       ['dashboard','campaigns','locations','settings'],
-      [ROLES.DIETITIAN]:            ['dashboard','campaigns','settings'],
+      [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','command','org-preview','threads','settings'],
+      [ROLES.OPERATIONS]:           ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','command','org-preview','threads','settings'],
+      [ROLES.CONTROLLER]:           ['dashboard','controller','campaigns','locations','threads','settings'],
+      [ROLES.DIRECTOR]:             ['dashboard','approvals','content','campaigns','locations','notifications','ideas','threads','settings'],
+      [ROLES.MANAGER]:              ['dashboard','tasks','approvals','assets','content','campaigns','locations','notifications','threads','settings'],
+      [ROLES.DESIGNER]:             ['dashboard','tasks','assets','locations','notifications','threads','settings'],
+      [ROLES.SOCIAL_MEDIA_INTERN]:  ['dashboard','tasks','content','notifications','threads','settings'],
+      [ROLES.PHOTOGRAPHER]:         ['dashboard','assets','threads','settings'],
+      [ROLES.SUSTAINABILITY]:       ['dashboard','campaigns','locations','threads','settings'],
+      [ROLES.DIETITIAN]:            ['dashboard','campaigns','threads','settings'],
     },
 
     /*  Action capabilities per role  */
@@ -1169,6 +1359,7 @@ const Store = (() => {
         { page: 'content',       icon: '🎬', label: 'Content' },
         { page: 'campaigns',     icon: '📣', label: 'Campaigns' },
         { page: 'approvals',     icon: '⏱️', label: 'Approvals' },
+        { page: 'threads',       icon: '💬', label: 'Threads' },
         { page: 'controller',    icon: '📊', label: 'Analytics' },
         { page: 'feedback',      icon: '💬', label: 'Shift Feedback' },
         { page: 'notifications', icon: '🔔', label: 'Notifications' },
@@ -1180,16 +1371,16 @@ const Store = (() => {
         { page: 'settings',      icon: '⚙️', label: 'Settings' },
       ];
       const map = {
-        [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','command','org-preview','settings'],
-        [ROLES.OPERATIONS]:           ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','command','org-preview','settings'],
-        [ROLES.CONTROLLER]:           ['campaigns','controller','settings'],
-        [ROLES.DIRECTOR]:             ['content','campaigns','approvals','notifications','ideas','settings'],
-        [ROLES.MANAGER]:              ['assets','content','campaigns','notifications','settings'],
-        [ROLES.DESIGNER]:             ['assets','notifications','settings'],
-        [ROLES.SOCIAL_MEDIA_INTERN]:  ['content','notifications','settings'],
-        [ROLES.PHOTOGRAPHER]:         ['assets','settings'],
-        [ROLES.SUSTAINABILITY]:       ['campaigns','settings'],
-        [ROLES.DIETITIAN]:            ['campaigns','settings'],
+        [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','threads','controller','feedback','notifications','team','admin','command','org-preview','settings'],
+        [ROLES.OPERATIONS]:           ['assets','content','campaigns','approvals','threads','controller','feedback','notifications','team','admin','command','org-preview','settings'],
+        [ROLES.CONTROLLER]:           ['campaigns','threads','controller','settings'],
+        [ROLES.DIRECTOR]:             ['content','campaigns','approvals','threads','notifications','ideas','settings'],
+        [ROLES.MANAGER]:              ['assets','content','campaigns','threads','notifications','settings'],
+        [ROLES.DESIGNER]:             ['assets','threads','notifications','settings'],
+        [ROLES.SOCIAL_MEDIA_INTERN]:  ['content','threads','notifications','settings'],
+        [ROLES.PHOTOGRAPHER]:         ['assets','threads','settings'],
+        [ROLES.SUSTAINABILITY]:       ['campaigns','threads','settings'],
+        [ROLES.DIETITIAN]:            ['campaigns','threads','settings'],
       };
       const allowed = map[role] || ['settings'];
       return ALL.filter(i => allowed.includes(i.page));
@@ -1199,12 +1390,27 @@ const Store = (() => {
     defaultPage() {
       return 'dashboard';
     },
+
+    /*  Bottom nav tabs for the current role (configurable by admin)  */
+    navTabs() {
+      const role = getActiveRole();
+      const cfg = getRoleNavConfig();
+      const roleCfg = cfg[role] || { dashboard: true, tasks: true, locations: true, more: true };
+      const tabs = [];
+      if (roleCfg.dashboard) tabs.push('dashboard');
+      if (roleCfg.tasks) tabs.push('tasks');
+      if (roleCfg.locations) tabs.push('locations');
+      if (roleCfg.more) tabs.push('more');
+      return tabs;
+    },
   };
 
   return {
     VERSION, ROLES, ALL_ROLES,
     getSettings, saveSettings, syncFromSession,
     setPreviewRole, getActiveRole, isAdminMode, isPreviewMode,
+    getRoleNavConfig, saveRoleNavConfig,
+    getRoleHomeMode, saveRoleHomeMode,
     getTeam, saveTeam, addTeamMember, updateTeamMember, deleteTeamMember,
     getTasks, saveTasks, addTask, updateTask, deleteTask,
     getApprovals, saveApprovals, addApproval, updateApproval, addApprovalComment,
@@ -1227,6 +1433,10 @@ const Store = (() => {
     listIdeas, addIdea, updateIdea,
     getScopePages,
     Permissions,
+    getThreadChannels, saveThreadChannels,
+    getThreads, saveThreads, addThread,
+    getThreadMessages, saveThreadMessages, addThreadMessage,
+    addThreadReaction, toggleThreadReaction,
     seed, clearAll, checkExpiryAndCreateTasks,
     /* API adapter — use when API_ENABLED is flipped to true */
     API_ENABLED, apiGet, apiPost, apiPut, apiDelete,

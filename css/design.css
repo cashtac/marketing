@@ -112,24 +112,20 @@ body {
 }
 .app-header .role-badge:active { transform: scale(0.94); }
 
-/* ─── Preview Banner ─── */
-.preview-banner {
-  position: fixed; top: 0; left: 0; right: 0;
-  height: 32px;
-  background: linear-gradient(90deg, var(--pink-500), var(--pink-600));
-  color: white;
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  font-size: 0.72rem; font-weight: 500;
-  z-index: var(--z-preview);
+/* ─── Preview Indicator (inline in header) ─── */
+.preview-indicator {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(232,166,64,0.15);
+  color: #E8A640;
+  padding: 3px 10px; border-radius: var(--radius-full);
+  font-size: 0.6rem; font-weight: 600;
+  white-space: nowrap;
 }
-.preview-banner strong { font-weight: 700; }
-.preview-banner button {
-  background: rgba(255,255,255,0.25); border: none; color: white;
-  padding: 2px 10px; border-radius: var(--radius-full);
-  font-size: 0.65rem; font-weight: 600; cursor: pointer;
+.preview-indicator button {
+  background: rgba(231,76,60,0.8); border: none; color: white;
+  padding: 2px 8px; border-radius: var(--radius-full);
+  font-size: 0.58rem; font-weight: 600; cursor: pointer;
 }
-body.has-preview-banner .app-header { top: 32px; }
-body.has-preview-banner .app-content { padding-top: calc(var(--header-height) + 44px); }
 
 /* ─── Drawer Overlay ─── */
 .drawer-overlay {

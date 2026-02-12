@@ -100,7 +100,7 @@ const CommandPage = (() => {
           <line x1="680" y1="330" x2="780" y2="160" stroke="rgba(47,107,255,0.20)" stroke-width="1" stroke-dasharray="4,4">
             <animate attributeName="stroke-dashoffset" from="0" to="8" dur="2s" repeatCount="indefinite"/>
           </line>
-          <line x1="680" y1="330" x2="760" y2="440" stroke="rgba(47,107,255,0.20)" stroke-width="1" stroke-dasharray="4,4">
+          <line x1="680" y1="330" x2="720" y2="430" stroke="rgba(47,107,255,0.20)" stroke-width="1" stroke-dasharray="4,4">
             <animate attributeName="stroke-dashoffset" from="0" to="8" dur="2.5s" repeatCount="indefinite"/>
           </line>
           <line x1="680" y1="330" x2="740" y2="260" stroke="rgba(47,107,255,0.25)" stroke-width="1.2" stroke-dasharray="4,4">
@@ -132,7 +132,7 @@ const CommandPage = (() => {
           <text x="790" y="148" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9" font-family="Inter,system-ui,sans-serif">Northeast</text>
 
           <!-- Florida cluster -->
-          <text x="755" y="465" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9" font-family="Inter,system-ui,sans-serif">Florida</text>
+          <text x="715" y="455" text-anchor="middle" fill="rgba(255,255,255,0.4)" font-size="9" font-family="Inter,system-ui,sans-serif">Florida</text>
 
           <!-- Mid-Atlantic — George Mason highlighted -->
           <circle cx="740" cy="260" r="5" fill="rgba(62,208,255,0.4)" filter="url(#glowNode)">
@@ -154,8 +154,8 @@ const CommandPage = (() => {
       {x:755,y:230,r:2.5}, {x:730,y:275,r:2}, {x:720,y:245,r:2}, {x:750,y:280,r:2},
       // Southeast
       {x:700,y:360,r:2.5}, {x:660,y:380,r:2}, {x:640,y:350,r:2},
-      // Florida
-      {x:720,y:430,r:3}, {x:740,y:450,r:2.5}, {x:760,y:440,r:2}, {x:730,y:470,r:2},
+      // Florida (peninsula — moves southeast of Charlotte)
+      {x:700,y:420,r:3}, {x:710,y:440,r:2.5}, {x:720,y:435,r:2}, {x:705,y:460,r:2},
       // Central
       {x:500,y:280,r:2.5}, {x:520,y:300,r:2}, {x:480,y:260,r:2}, {x:460,y:310,r:2},
       // Midwest

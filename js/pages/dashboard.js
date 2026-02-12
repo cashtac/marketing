@@ -3,7 +3,26 @@ const DashboardPage = (() => {
 
   function render() {
     const settings = Store.getSettings();
-    const role = settings.role;
+    const activeRole = Store.getActiveRole();
+    const R = Store.ROLES;
+
+    /* Per-role home screen routing */
+    if (activeRole === R.OPERATIONS) {
+      return CommandPage.render();
+    }
+    if (activeRole !== R.ADMIN) {
+      /* Director gets threads + approvals widget + performance snapshot */
+      if (activeRole === R.DIRECTOR) {
+        return _renderDirectorHome(settings);
+      }
+      /* All other roles → Threads */
+      if (typeof ThreadsPage !== 'undefined') {
+        ThreadsPage.resetNav();
+        return ThreadsPage.render();
+      }
+    }
+
+    /* Admin → strategic dashboard */
     const allTasks = Store.getTasks();
     const tasks = Store.Permissions.filterTasks(allTasks);
     const approvals = Store.Permissions.filterApprovals(Store.getApprovals());
@@ -66,7 +85,6 @@ const DashboardPage = (() => {
         <p class="page-subtitle" style="margin-bottom:2px">${greet},</p>
         <h1 class="page-title" style="margin-bottom:8px">${_esc(settings.name)}</h1>
 
-        ${_renderPreviewControls()}
 
         <!-- Attention banner -->
         <div class="card ${totalUrgent > 0 ? 'card-pink' : ''}" style="margin-bottom:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
@@ -248,43 +266,63 @@ const DashboardPage = (() => {
     if (hrs < 24) return `${hrs}h ago`;
     return `${Math.floor(hrs / 24)}d ago`;
   }
+  /* ── Director Home — Threads + Approvals widget + Performance snapshot ── */
+  function _renderDirectorHome(settings) {
+    const pending = Store.Permissions.filterApprovals(Store.getApprovals()).filter(a => a.status === 'pending');
+    const greetHour = new Date().getHours();
+    const greet = greetHour < 12 ? 'Good morning' : greetHour < 18 ? 'Good afternoon' : 'Good evening';
 
-  /* ── Preview Controls (Admin only) ── */
-  function _renderPreviewControls() {
-    const session = typeof AuthManager !== 'undefined' ? AuthManager.getSession() : null;
-    const realRole = session ? session.role : Store.getSettings().role;
-    if (realRole !== Store.ROLES.ADMIN) return '';
+    /* Performance snapshot KPIs */
+    const perf = [
+      { label: 'Campaign ROI', value: '3.2×', trend: '↑ 12%', color: 'var(--success,#34C759)' },
+      { label: 'Active Campaigns', value: String(Store.getCampaigns().filter(c=>c.status==='active').length), trend: '', color: 'var(--primary,#2F6BFF)' },
+      { label: 'Team Output', value: '94%', trend: '↑ 5%', color: 'var(--success,#34C759)' },
+      { label: 'Pending Tasks', value: String(Store.Permissions.filterTasks(Store.getTasks()).filter(t=>t.status!=='published').length), trend: '', color: 'var(--warning,#E8A640)' },
+    ];
 
-    const isPreview = Store.isPreviewMode();
-    const activeRole = Store.getActiveRole();
+    /* Threads content */
+    if (typeof ThreadsPage !== 'undefined') ThreadsPage.resetNav();
+    const threadsHTML = typeof ThreadsPage !== 'undefined' ? ThreadsPage.render() : '';
 
     return `
-      <div style="margin-bottom:16px;padding:14px 16px;border-radius:var(--radius-md);background:var(--card-bg,var(--gray-50));border:1px solid var(--border,rgba(0,0,0,0.06))">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
-          <span style="font-size:0.9rem">👁️</span>
-          <span style="font-size:0.78rem;font-weight:700;color:var(--text)">Role Preview</span>
-          ${isPreview ? '<span style="font-size:0.6rem;padding:2px 8px;border-radius:20px;background:rgba(232,166,64,0.15);color:#E8A640;font-weight:600;margin-left:auto">Active</span>' : '<span style="font-size:0.6rem;padding:2px 8px;border-radius:20px;background:rgba(47,107,255,0.1);color:var(--text-muted);font-weight:600;margin-left:auto">Admin View</span>'}
+      <div class="page active" id="page-dashboard">
+        <p class="page-subtitle" style="margin-bottom:2px">${greet},</p>
+        <h1 class="page-title" style="margin-bottom:16px">${_esc(settings.name)}</h1>
+
+        <!-- Approvals Quick Access -->
+        <div class="card" style="margin-bottom:16px;padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:0.82rem;font-weight:700;color:var(--text)">⏱️ Pending Approvals</span>
+            <span style="font-size:0.68rem;padding:3px 10px;border-radius:20px;background:${pending.length?'rgba(255,59,48,0.1)':'rgba(52,199,89,0.1)'};color:${pending.length?'#FF3B30':'#34C759'};font-weight:600">${pending.length || '✓'}</span>
+          </div>
+          ${pending.slice(0, 3).map(a => `
+            <div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+              <span style="font-size:0.78rem;color:var(--text);flex:1">${_esc(a.title)}</span>
+              <span style="font-size:0.6rem;color:var(--text-muted)">${_esc(a.submittedBy||'')}</span>
+            </div>
+          `).join('')}
+          ${pending.length > 3 ? '<div style="font-size:0.68rem;color:var(--text-muted);margin-top:6px">+' + (pending.length-3) + ' more</div>' : ''}
+          <button class="btn btn-primary" style="margin-top:12px;width:100%;font-size:0.75rem" onclick="App.navigate('approvals')">View All Approvals</button>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button onclick="App.switchRole('${Store.ROLES.DIRECTOR}')" style="
-            flex:1;min-width:120px;padding:10px 12px;border:1px solid ${activeRole === Store.ROLES.DIRECTOR ? 'var(--pink-500)' : 'var(--border,rgba(0,0,0,0.08))'};border-radius:10px;
-            background:${activeRole === Store.ROLES.DIRECTOR ? 'rgba(232,75,108,0.1)' : 'transparent'};
-            color:${activeRole === Store.ROLES.DIRECTOR ? 'var(--pink-500)' : 'var(--text)'};
-            font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.2s;
-          ">👔 Preview Director</button>
-          <button onclick="App.switchRole('${Store.ROLES.OPERATIONS}')" style="
-            flex:1;min-width:120px;padding:10px 12px;border:1px solid ${activeRole === Store.ROLES.OPERATIONS ? '#D4AF37' : 'var(--border,rgba(0,0,0,0.08))'};border-radius:10px;
-            background:${activeRole === Store.ROLES.OPERATIONS ? 'rgba(212,175,55,0.1)' : 'transparent'};
-            color:${activeRole === Store.ROLES.OPERATIONS ? '#D4AF37' : 'var(--text)'};
-            font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.2s;
-          ">🏗️ Preview Operations</button>
-          ${isPreview ? `
-            <button onclick="App.exitPreview()" style="
-              flex:1;min-width:120px;padding:10px 12px;border:1px solid var(--danger, #e74c3c);border-radius:10px;
-              background:rgba(231,76,60,0.1);color:var(--danger, #e74c3c);
-              font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.2s;
-            ">✕ Exit Preview</button>
-          ` : ''}
+
+        <!-- Performance Snapshot -->
+        <div class="card" style="margin-bottom:16px;padding:14px 16px">
+          <div style="font-size:0.82rem;font-weight:700;color:var(--text);margin-bottom:12px">📊 Performance Snapshot</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            ${perf.map(p => `
+              <div style="padding:12px;background:rgba(0,0,0,0.03);border-radius:10px;text-align:center">
+                <div style="font-size:1.2rem;font-weight:700;color:${p.color}">${p.value}</div>
+                <div style="font-size:0.62rem;color:var(--text-muted);margin-top:2px">${_esc(p.label)}</div>
+                ${p.trend ? '<div style="font-size:0.58rem;color:var(--success,#34C759);margin-top:2px">' + p.trend + '</div>' : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Threads -->
+        <div style="margin-top:8px">
+          <div style="font-size:0.82rem;font-weight:700;color:var(--text);margin-bottom:12px">💬 Team Threads</div>
+          ${threadsHTML}
         </div>
       </div>
     `;

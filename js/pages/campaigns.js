@@ -49,6 +49,8 @@ const CampaignsPage = (() => {
 
         ${canManage ? `<button class="btn btn-primary btn-block" style="margin:12px 0" onclick="CampaignsPage.openCreate()">+ New Campaign</button>` : ''}
 
+        <button class="btn btn-secondary btn-block" style="margin-bottom:12px;font-size:0.75rem" onclick="CalendarExport.exportUpcoming()">📅 Export to Outlook Calendar</button>
+
         ${filtered.length === 0 ? `
           <div class="empty-state">
             <div class="empty-state-icon">📢</div>

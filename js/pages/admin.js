@@ -98,6 +98,12 @@ const AdminPage = (() => {
               people.map(p => _renderPersonRow(p, roles, departments)).join('')}
           </div>
         </div>
+
+        <!-- ─── D) Role Settings ─── -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="section-header"><span class="section-title">⚙️ Role Settings</span></div>
+          ${_renderRoleSettings()}
+        </div>
       </div>
     `;
   }
@@ -384,6 +390,82 @@ const AdminPage = (() => {
     if (overlay) overlay.remove();
   }
 
+  /* ─── Role Settings renderer ─── */
+  function _renderRoleSettings() {
+    const navCfg = Store.getRoleNavConfig();
+    const homeCfg = Store.getRoleHomeMode();
+    const R = Store.ROLES;
+    const roleList = [
+      { key: R.OPERATIONS,          label: 'Operations' },
+      { key: R.DIRECTOR,            label: 'Marketing Director' },
+      { key: R.CONTROLLER,          label: 'Controller' },
+      { key: R.MANAGER,             label: 'Marketing Manager' },
+      { key: R.DESIGNER,            label: 'Graphic Designer' },
+      { key: R.SOCIAL_MEDIA_INTERN, label: 'Social Media Intern' },
+      { key: R.PHOTOGRAPHER,        label: 'Photographer' },
+      { key: R.SUSTAINABILITY,      label: 'Sustainability' },
+      { key: R.DIETITIAN,           label: 'Dietitian' },
+    ];
+    const tabs = ['dashboard','tasks','locations','more'];
+    const tabLabels = { dashboard:'Home', tasks:'Tasks', locations:'Locations', more:'More' };
+    const homeModes = [
+      { value:'strategic', label:'Strategic Dashboard' },
+      { value:'chat',      label:'Internal Chat' },
+      { value:'custom',    label:'Custom (future)' },
+    ];
+
+    return `
+      <div style="margin-bottom:16px">
+        <div style="font-size:0.78rem;font-weight:700;color:var(--text);margin-bottom:10px">Navigation Control</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:0.72rem">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border)">
+                <th style="text-align:left;padding:6px 8px;color:var(--text-muted);font-weight:600">Role</th>
+                ${tabs.map(t => '<th style="text-align:center;padding:6px 4px;color:var(--text-muted);font-weight:600">' + tabLabels[t] + '</th>').join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${roleList.map(r => {
+                const rc = navCfg[r.key] || { dashboard:true, tasks:true, locations:true, more:true };
+                return '<tr style="border-bottom:1px solid var(--border,rgba(0,0,0,0.04))">' +
+                  '<td style="padding:8px;font-weight:500;color:var(--text)">' + r.label + '</td>' +
+                  tabs.map(t => '<td style="text-align:center;padding:8px 4px"><input type="checkbox" ' + (rc[t] ? 'checked' : '') + ' onchange="AdminPage.toggleNav(\'' + r.key + '\',\'' + t + '\',this.checked)" style="cursor:pointer;width:16px;height:16px;accent-color:var(--pink-500)" /></td>').join('') +
+                '</tr>';
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:0.78rem;font-weight:700;color:var(--text);margin-bottom:10px">Home Screen Mode</div>
+        ${roleList.map(r => {
+          const mode = homeCfg[r.key] || 'chat';
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border,rgba(0,0,0,0.04))">' +
+            '<span style="font-size:0.75rem;font-weight:500;color:var(--text)">' + r.label + '</span>' +
+            '<select onchange="AdminPage.setHomeMode(\'' + r.key + '\',this.value)" style="font-size:0.7rem;padding:4px 8px;border-radius:8px;border:1px solid var(--border);background:var(--card-bg,#fff);color:var(--text);cursor:pointer">' +
+              homeModes.map(m => '<option value="' + m.value + '"' + (mode === m.value ? ' selected' : '') + '>' + m.label + '</option>').join('') +
+            '</select>' +
+          '</div>';
+        }).join('')}
+      </div>
+    `;
+  }
+
+  function toggleNav(role, tab, checked) {
+    const cfg = Store.getRoleNavConfig();
+    if (!cfg[role]) cfg[role] = { dashboard:true, tasks:true, locations:true, more:true };
+    cfg[role][tab] = checked;
+    Store.saveRoleNavConfig(cfg);
+    App.refresh();
+  }
+
+  function setHomeMode(role, mode) {
+    const cfg = Store.getRoleHomeMode();
+    cfg[role] = mode;
+    Store.saveRoleHomeMode(cfg);
+  }
+
   /* ─── Helpers ─── */
   function _esc(s)      { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
   function _initials(n) { return (n || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2); }
@@ -394,5 +476,6 @@ const AdminPage = (() => {
     addRole, deleteRole,
     editPerson, cancelEdit, savePerson, removePerson,
     openOrgPreview, closeOrgPreview,
+    toggleNav, setHomeMode,
   };
 })();

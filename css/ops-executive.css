@@ -241,16 +241,6 @@ body.theme-operations .card-meta  { color: #A89F91; }
 body.theme-operations .assignee-name { color: #E8E4DC; }
 body.theme-operations .due-date { color: #6B6358; }
 
-/* ── Preview banner ── */
-body.theme-operations .preview-banner {
-  background: linear-gradient(90deg, #D4AF37, #B8962E);
-  color: #0A0A0A;
-}
-body.theme-operations .preview-banner button {
-  background: rgba(0,0,0,0.2);
-  color: #0A0A0A;
-}
-
 /* ── Org Preview overlay ── */
 body.theme-operations #org-preview-overlay { background: #0A0A0A; }
 body.theme-operations #org-preview-overlay > div { background: #0A0A0A; }
