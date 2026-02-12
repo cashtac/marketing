@@ -17,6 +17,7 @@ const App = (() => {
     feedback:     () => FeedbackPage.render(),
     notifications:() => NotificationsPage.render(),
     admin:        () => AdminPage.render(),
+    ideas:        () => IdeasPage.render(),
     settings:     () => SettingsPage.render(),
     taskview:     () => TaskViewPage.render(),
     locationview: () => LocationsPage.render(),
@@ -25,7 +26,7 @@ const App = (() => {
   };
 
   /* Pages that live under the "More" drawer (not primary nav tabs) */
-  const MORE_PAGES = ['approvals','assets','content','campaigns','team','controller','feedback','notifications','admin','settings'];
+  const MORE_PAGES = ['approvals','assets','content','campaigns','team','controller','feedback','notifications','admin','ideas','settings'];
 
   function init() {
     Store.seed();
@@ -162,15 +163,17 @@ const App = (() => {
     container.innerHTML = PAGES[_currentPage]();
     _updateNav();
     _updatePreviewBanner();
-    _updateAdminScope();
+    _updateThemeScope();
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  /* ── Executive Admin scope toggle ── */
-  function _updateAdminScope() {
+  /* ── Theme scope toggle (Admin blue + Operations gold) ── */
+  function _updateThemeScope() {
     const role = Store.getActiveRole();
-    const isAdmin = role === Store.ROLES.ADMIN || role === Store.ROLES.OPERATIONS;
+    const isAdmin = role === Store.ROLES.ADMIN;
+    const isOps   = role === Store.ROLES.OPERATIONS;
     document.body.classList.toggle('admin-scope', isAdmin);
+    document.body.classList.toggle('theme-operations', isOps);
   }
 
   function _updateNav() {

@@ -84,6 +84,7 @@ const Store = (() => {
     orgDepartments: 'ims_org_departments',
     orgRoles: 'ims_org_roles',
     orgPeople: 'ims_org_people',
+    ideas: 'ims_ideas',
   };
 
   /* ── Helpers ── */
@@ -990,6 +991,21 @@ const Store = (() => {
     savePeople(all);
   }
 
+  /* ═══ Ideas — Director Approval ═══ */
+  function listIdeas()        { return _get(KEYS.ideas) || []; }
+  function saveIdeas(arr)     { _set(KEYS.ideas, arr); }
+  function addIdea(obj) {
+    const all = listIdeas();
+    const idea = { id: 'idea_' + _id(), title: obj.title, desc: obj.desc || '', category: obj.category || 'general', priority: obj.priority || 'medium', status: 'pending', createdAt: _now() };
+    all.push(idea);
+    saveIdeas(all);
+    return idea;
+  }
+  function updateIdea(id, updates) {
+    const all = listIdeas().map(i => i.id === id ? { ...i, ...updates } : i);
+    saveIdeas(all);
+  }
+
   /* ═══ Scope-based drawer resolving ═══ */
   function getScopePages(scope) {
     switch (scope) {
@@ -1019,7 +1035,7 @@ const Store = (() => {
       [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','settings'],
       [ROLES.OPERATIONS]:           ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','settings'],
       [ROLES.CONTROLLER]:           ['dashboard','controller','campaigns','locations','settings'],
-      [ROLES.DIRECTOR]:             ['dashboard','approvals','content','campaigns','locations','notifications','settings'],
+      [ROLES.DIRECTOR]:             ['dashboard','approvals','content','campaigns','locations','notifications','ideas','settings'],
       [ROLES.MANAGER]:              ['dashboard','tasks','approvals','assets','content','campaigns','locations','notifications','settings'],
       [ROLES.DESIGNER]:             ['dashboard','tasks','assets','locations','notifications','settings'],
       [ROLES.SOCIAL_MEDIA_INTERN]:  ['dashboard','tasks','content','notifications','settings'],
@@ -1158,13 +1174,14 @@ const Store = (() => {
         { page: 'notifications', icon: '🔔', label: 'Notifications' },
         { page: 'team',          icon: '👥', label: 'Team' },
         { page: 'admin',         icon: '🏢', label: 'Admin Panel' },
+        { page: 'ideas',         icon: '💡', label: 'Ideas' },
         { page: 'settings',      icon: '⚙️', label: 'Settings' },
       ];
       const map = {
         [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','settings'],
         [ROLES.OPERATIONS]:           ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','settings'],
         [ROLES.CONTROLLER]:           ['campaigns','controller','settings'],
-        [ROLES.DIRECTOR]:             ['content','campaigns','approvals','notifications','settings'],
+        [ROLES.DIRECTOR]:             ['content','campaigns','approvals','notifications','ideas','settings'],
         [ROLES.MANAGER]:              ['assets','content','campaigns','notifications','settings'],
         [ROLES.DESIGNER]:             ['assets','notifications','settings'],
         [ROLES.SOCIAL_MEDIA_INTERN]:  ['content','notifications','settings'],
@@ -1205,6 +1222,7 @@ const Store = (() => {
     listDepartments, addDepartment, deleteDepartment,
     listOrgRoles, addOrgRole, deleteOrgRole,
     listPeople, addPerson, updatePerson, deletePerson,
+    listIdeas, addIdea, updateIdea,
     getScopePages,
     Permissions,
     seed, clearAll, checkExpiryAndCreateTasks,

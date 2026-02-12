@@ -1,0 +1,293 @@
+/* ─── VP Operations — Premium Gold Theme ─── */
+/* Applied when body has class `theme-operations`.
+   Visual-only layer — no layout, data, or routing changes. */
+
+/* ── Animated background glow ── */
+@keyframes opsGlow {
+  0%, 100% { opacity: 0.06; transform: translate(10%, -10%) scale(1); }
+  50%      { opacity: 0.10; transform: translate(5%, -5%) scale(1.12); }
+}
+
+body.theme-operations::before {
+  content: '';
+  position: fixed;
+  top: -120px; right: -120px;
+  width: 420px; height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212,175,55,0.30) 0%, transparent 70%);
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+  animation: opsGlow 18s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+/* ── Base colors ── */
+body.theme-operations {
+  --bg:           #0A0A0A;
+  --card-bg:      #121212;
+  --white:        #121212;
+  --gray-50:      #181818;
+  --gray-100:     #181818;
+  --gray-200:     #222222;
+  --text:         #E8E4DC;
+  --text-muted:   #A89F91;
+  --text-light:   #6B6358;
+  --border:       rgba(212,175,55,0.12);
+  --pink-50:      rgba(212,175,55,0.08);
+  --pink-100:     rgba(212,175,55,0.14);
+  --pink-200:     rgba(212,175,55,0.20);
+  --pink-300:     #D4AF37;
+  --pink-400:     #E0BE4A;
+  --pink-500:     #D4AF37;
+  --pink-600:     #F5D76E;
+  --pink-700:     #D4AF37;
+  --success:      #3DDC97;
+  --success-bg:   rgba(61,220,151,0.08);
+  --warning:      #F5D76E;
+  --warning-bg:   rgba(245,215,110,0.08);
+  --danger:       #FF4D4F;
+  --danger-bg:    rgba(255,77,79,0.08);
+  --info:         #F5D76E;
+  --info-bg:      rgba(245,215,110,0.06);
+  --shadow-sm:    0 2px 8px rgba(0,0,0,0.35);
+  --shadow-md:    0 4px 16px rgba(0,0,0,0.45);
+  --shadow-lg:    0 8px 32px rgba(0,0,0,0.5);
+  --shadow-pink:  0 6px 18px rgba(212,175,55,0.25);
+  background: #0A0A0A;
+  color: #E8E4DC;
+}
+
+/* ── Scrollbar ── */
+body.theme-operations ::-webkit-scrollbar-thumb { background: rgba(212,175,55,0.25); }
+
+/* ── Header ── */
+body.theme-operations .app-header {
+  background: rgba(10,10,10,0.94);
+  border-bottom: 1px solid rgba(212,175,55,0.12);
+  backdrop-filter: blur(16px);
+}
+body.theme-operations .app-header .logo { color: #E8E4DC; }
+body.theme-operations .app-header .logo-icon {
+  background: #D4AF37;
+  box-shadow: 0 0 12px rgba(212,175,55,0.2);
+  color: #0A0A0A;
+}
+body.theme-operations .app-header .role-badge {
+  background: rgba(212,175,55,0.12) !important;
+  border: 1px solid rgba(212,175,55,0.25);
+  color: #F5D76E !important;
+}
+
+/* ── Bottom Nav ── */
+body.theme-operations .bottom-nav {
+  background: rgba(10,10,10,0.96);
+  border-top: 1px solid rgba(212,175,55,0.10);
+  backdrop-filter: blur(16px);
+}
+body.theme-operations .nav-item {
+  color: #6B6358;
+  transition: all 0.2s ease;
+}
+body.theme-operations .nav-item.active { color: #F5D76E; }
+body.theme-operations .nav-item.active::after {
+  background: #D4AF37;
+  box-shadow: 0 0 8px rgba(212,175,55,0.35);
+}
+
+/* ── Cards ── */
+body.theme-operations .card {
+  background: #121212;
+  border: 1px solid rgba(212,175,55,0.10);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  transition: all 0.2s ease;
+}
+body.theme-operations .card:hover {
+  border-color: rgba(212,175,55,0.18);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.08);
+}
+body.theme-operations .card-pink {
+  background: linear-gradient(135deg, rgba(212,175,55,0.06), rgba(245,215,110,0.03));
+}
+
+/* Stat cards */
+body.theme-operations .stat-card {
+  background: #121212;
+  border: 1px solid rgba(212,175,55,0.10);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+}
+body.theme-operations .stat-number { color: #F5D76E; }
+
+/* ── Buttons ── */
+body.theme-operations .btn { transition: all 0.2s ease; }
+body.theme-operations .btn-primary {
+  background: #D4AF37;
+  color: #0A0A0A;
+  box-shadow: 0 6px 18px rgba(212,175,55,0.25);
+  border-radius: 14px;
+  font-weight: 600;
+}
+body.theme-operations .btn-primary:hover {
+  background: #E0BE4A;
+  box-shadow: 0 6px 22px rgba(212,175,55,0.35);
+}
+body.theme-operations .btn-secondary {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(212,175,55,0.12);
+  color: #E8E4DC;
+}
+body.theme-operations .btn-secondary:hover {
+  background: rgba(212,175,55,0.08);
+  border-color: rgba(212,175,55,0.20);
+}
+body.theme-operations .btn-ghost { color: #A89F91; }
+body.theme-operations .btn-ghost:hover {
+  background: rgba(212,175,55,0.08);
+  color: #F5D76E;
+}
+body.theme-operations .btn-danger { background: #FF4D4F; color: white; border: none; }
+body.theme-operations .btn-success { background: #3DDC97; color: #0A0A0A; }
+
+/* ── FAB ── */
+body.theme-operations .fab {
+  background: #D4AF37;
+  color: #0A0A0A;
+  box-shadow: 0 6px 18px rgba(212,175,55,0.3);
+}
+
+/* ── Drawer ── */
+body.theme-operations .drawer {
+  background: #121212;
+  border-top: 1px solid rgba(212,175,55,0.10);
+}
+body.theme-operations .drawer-handle { background: rgba(212,175,55,0.20); }
+body.theme-operations .drawer-title { color: #E8E4DC; }
+body.theme-operations .drawer-item {
+  color: #A89F91;
+  border-bottom-color: rgba(212,175,55,0.06);
+  transition: all 0.2s ease;
+}
+body.theme-operations .drawer-item:hover {
+  background: rgba(212,175,55,0.05);
+  color: #E8E4DC;
+}
+body.theme-operations .drawer-item .drawer-label { color: #A89F91; }
+
+/* ── Modal ── */
+body.theme-operations .modal-overlay { background: rgba(5,5,5,0.65); }
+body.theme-operations .modal {
+  background: #121212;
+  border: 1px solid rgba(212,175,55,0.10);
+}
+body.theme-operations .modal-handle { background: rgba(212,175,55,0.18); }
+body.theme-operations .modal-title { color: #E8E4DC; }
+
+/* ── Forms ── */
+body.theme-operations .form-input,
+body.theme-operations .form-select,
+body.theme-operations .form-textarea {
+  background: #181818;
+  border: 1px solid rgba(212,175,55,0.10);
+  color: #E8E4DC;
+  transition: all 0.2s ease;
+}
+body.theme-operations .form-input::placeholder,
+body.theme-operations .form-textarea::placeholder { color: #6B6358; }
+body.theme-operations .form-input:focus,
+body.theme-operations .form-select:focus,
+body.theme-operations .form-textarea:focus {
+  border-color: rgba(212,175,55,0.40);
+  box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
+}
+body.theme-operations .form-label { color: #A89F91; letter-spacing: 0.08em; }
+
+/* ── Section headers ── */
+body.theme-operations .section-title { color: #A89F91; letter-spacing: 0.08em; }
+body.theme-operations .section-count {
+  background: rgba(212,175,55,0.12);
+  color: #F5D76E;
+}
+
+/* ── Chips ── */
+body.theme-operations .chip-todo,
+body.theme-operations .chip-progress { background: rgba(212,175,55,0.10); color: #F5D76E; }
+body.theme-operations .chip-todo .chip-dot,
+body.theme-operations .chip-progress .chip-dot { background: #D4AF37; }
+body.theme-operations .chip-review { background: rgba(255,255,255,0.05); color: #A89F91; }
+body.theme-operations .chip-review .chip-dot { background: #6B6358; }
+body.theme-operations .chip-done { background: rgba(61,220,151,0.08); color: #3DDC97; }
+body.theme-operations .chip-done .chip-dot { background: #3DDC97; }
+body.theme-operations .chip-role { background: rgba(212,175,55,0.10); color: #F5D76E; }
+
+/* ── Avatar ── */
+body.theme-operations .avatar {
+  background: rgba(212,175,55,0.15);
+  color: #F5D76E;
+}
+
+/* ── Priority ── */
+body.theme-operations .priority-high   { border-left-color: #FF4D4F; }
+body.theme-operations .priority-medium { border-left-color: rgba(212,175,55,0.35); }
+body.theme-operations .priority-low    { border-left-color: rgba(255,255,255,0.06); }
+
+/* ── Typography ── */
+body.theme-operations .page-title { color: #ffffff; letter-spacing: -0.02em; font-weight: 700; }
+body.theme-operations .page-subtitle { color: #A89F91; }
+body.theme-operations h1, body.theme-operations h2, body.theme-operations h3 {
+  color: #ffffff; letter-spacing: -0.02em; font-weight: 700;
+}
+body.theme-operations .card-title { color: #E8E4DC; }
+body.theme-operations .card-meta  { color: #A89F91; }
+body.theme-operations .assignee-name { color: #E8E4DC; }
+body.theme-operations .due-date { color: #6B6358; }
+
+/* ── Preview banner ── */
+body.theme-operations .preview-banner {
+  background: linear-gradient(90deg, #D4AF37, #B8962E);
+  color: #0A0A0A;
+}
+body.theme-operations .preview-banner button {
+  background: rgba(0,0,0,0.2);
+  color: #0A0A0A;
+}
+
+/* ── Org Preview overlay ── */
+body.theme-operations #org-preview-overlay { background: #0A0A0A; }
+body.theme-operations #org-preview-overlay > div { background: #0A0A0A; }
+
+/* ── Role buttons ── */
+body.theme-operations .role-btn {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(212,175,55,0.08);
+  color: #A89F91;
+  transition: all 0.2s ease;
+}
+body.theme-operations .role-btn:hover {
+  background: rgba(212,175,55,0.06);
+  border-color: rgba(212,175,55,0.20);
+  color: #F5D76E;
+}
+
+/* ── Tabs ── */
+body.theme-operations .tab-bar {
+  background: #181818;
+  border: 1px solid rgba(212,175,55,0.08);
+}
+body.theme-operations .tab-item { color: #6B6358; transition: all 0.2s ease; }
+body.theme-operations .tab-item.active { color: #F5D76E; background: rgba(212,175,55,0.10); }
+
+/* ── Misc ── */
+body.theme-operations .empty-state { color: #6B6358; }
+body.theme-operations .notification-item { background: #121212; transition: all 0.2s ease; }
+body.theme-operations a { color: #F5D76E; }
+body.theme-operations a:hover { color: #D4AF37; }
+
+/* ── Smoothness ── */
+body.theme-operations button,
+body.theme-operations input,
+body.theme-operations select,
+body.theme-operations textarea,
+body.theme-operations a { transition: all 0.2s ease; }
+
+/* ── Selection ── */
+body.theme-operations ::selection { background: rgba(212,175,55,0.25); color: #fff; }
