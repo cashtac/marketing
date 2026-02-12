@@ -1032,8 +1032,8 @@ const Store = (() => {
   const Permissions = {
     /*  Which pages each role can see  */
     pages: {
-      [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','settings'],
-      [ROLES.OPERATIONS]:           ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','settings'],
+      [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','command','settings'],
+      [ROLES.OPERATIONS]:           ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','command','settings'],
       [ROLES.CONTROLLER]:           ['dashboard','controller','campaigns','locations','settings'],
       [ROLES.DIRECTOR]:             ['dashboard','approvals','content','campaigns','locations','notifications','ideas','settings'],
       [ROLES.MANAGER]:              ['dashboard','tasks','approvals','assets','content','campaigns','locations','notifications','settings'],
@@ -1175,11 +1175,12 @@ const Store = (() => {
         { page: 'team',          icon: '👥', label: 'Team' },
         { page: 'admin',         icon: '🏢', label: 'Admin Panel' },
         { page: 'ideas',         icon: '💡', label: 'Ideas' },
+        { page: 'command',       icon: '🛰️', label: 'Command Center' },
         { page: 'settings',      icon: '⚙️', label: 'Settings' },
       ];
       const map = {
-        [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','settings'],
-        [ROLES.OPERATIONS]:           ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','settings'],
+        [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','command','settings'],
+        [ROLES.OPERATIONS]:           ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','command','settings'],
         [ROLES.CONTROLLER]:           ['campaigns','controller','settings'],
         [ROLES.DIRECTOR]:             ['content','campaigns','approvals','notifications','ideas','settings'],
         [ROLES.MANAGER]:              ['assets','content','campaigns','notifications','settings'],
