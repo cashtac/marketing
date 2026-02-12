@@ -16,6 +16,7 @@ const App = (() => {
     controller:   () => ControllerPage.render(),
     feedback:     () => FeedbackPage.render(),
     notifications:() => NotificationsPage.render(),
+    admin:        () => AdminPage.render(),
     settings:     () => SettingsPage.render(),
     taskview:     () => TaskViewPage.render(),
     locationview: () => LocationsPage.render(),
@@ -24,7 +25,7 @@ const App = (() => {
   };
 
   /* Pages that live under the "More" drawer (not primary nav tabs) */
-  const MORE_PAGES = ['approvals','assets','content','campaigns','team','controller','feedback','notifications','settings'];
+  const MORE_PAGES = ['approvals','assets','content','campaigns','team','controller','feedback','notifications','admin','settings'];
 
   function init() {
     Store.seed();

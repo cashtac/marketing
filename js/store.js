@@ -81,6 +81,9 @@ const Store = (() => {
     campaigns: 'ims_campaigns',
     displayUnits: 'ims_display_units',
     comments: 'ims_comments',
+    orgDepartments: 'ims_org_departments',
+    orgRoles: 'ims_org_roles',
+    orgPeople: 'ims_org_people',
   };
 
   /* ── Helpers ── */
@@ -933,6 +936,71 @@ const Store = (() => {
   }
 
   /* ── Clear all ── */
+  /* ═══ Org Structure — Departments ═══ */
+  function listDepartments()      { return _get(KEYS.orgDepartments) || []; }
+  function saveDepartments(d)     { _set(KEYS.orgDepartments, d); }
+  function addDepartment(name) {
+    const all = listDepartments();
+    const dept = { id: 'dept_' + _id(), name, order: all.length };
+    all.push(dept);
+    saveDepartments(all);
+    return dept;
+  }
+  function deleteDepartment(id) {
+    saveDepartments(listDepartments().filter(d => d.id !== id));
+    // Unassign people from deleted dept
+    const people = listPeople().map(p => p.deptId === id ? { ...p, deptId: null } : p);
+    savePeople(people);
+  }
+
+  /* ═══ Org Structure — Roles ═══ */
+  function listOrgRoles()          { return _get(KEYS.orgRoles) || []; }
+  function saveOrgRoles(r)         { _set(KEYS.orgRoles, r); }
+  function addOrgRole(name, scope, color) {
+    const all = listOrgRoles();
+    const role = { id: 'orole_' + _id(), name, scope: scope || 'marketing', color: color || 'gray' };
+    all.push(role);
+    saveOrgRoles(all);
+    return role;
+  }
+  function deleteOrgRole(id) {
+    saveOrgRoles(listOrgRoles().filter(r => r.id !== id));
+    // Unassign people from deleted role
+    const people = listPeople().map(p => p.roleId === id ? { ...p, roleId: null } : p);
+    savePeople(people);
+  }
+
+  /* ═══ Org Structure — People ═══ */
+  function listPeople()              { return _get(KEYS.orgPeople) || []; }
+  function savePeople(p)             { _set(KEYS.orgPeople, p); }
+  function addPerson({ name, roleId, deptId, managerId, photoUrl }) {
+    const all = listPeople();
+    const person = { id: 'pers_' + _id(), name, roleId: roleId || null, deptId: deptId || null, managerId: managerId || null, photoUrl: photoUrl || '' };
+    all.push(person);
+    savePeople(all);
+    return person;
+  }
+  function updatePerson(id, updates) {
+    const all = listPeople().map(p => p.id === id ? { ...p, ...updates } : p);
+    savePeople(all);
+  }
+  function deletePerson(id) {
+    // Reassign children to null manager
+    const all = listPeople().filter(p => p.id !== id).map(p => p.managerId === id ? { ...p, managerId: null } : p);
+    savePeople(all);
+  }
+
+  /* ═══ Scope-based drawer resolving ═══ */
+  function getScopePages(scope) {
+    switch (scope) {
+      case 'assets_only':    return ['dashboard', 'assets', 'settings'];
+      case 'content_social': return ['dashboard', 'assets', 'content', 'settings'];
+      case 'marketing':      return ['dashboard', 'tasks', 'assets', 'content', 'campaigns', 'locations', 'notifications', 'settings'];
+      case 'admin':          return null; // null = full access
+      default:               return ['dashboard', 'settings'];
+    }
+  }
+
   function clearAll() {
     Object.values(KEYS).forEach(k => localStorage.removeItem(k));
     localStorage.removeItem(VERSION_KEY);
@@ -948,8 +1016,8 @@ const Store = (() => {
   const Permissions = {
     /*  Which pages each role can see  */
     pages: {
-      [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','settings'],
-      [ROLES.OPERATIONS]:           ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','settings'],
+      [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','settings'],
+      [ROLES.OPERATIONS]:           ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','admin','settings'],
       [ROLES.CONTROLLER]:           ['dashboard','controller','campaigns','locations','settings'],
       [ROLES.DIRECTOR]:             ['dashboard','approvals','content','campaigns','locations','notifications','settings'],
       [ROLES.MANAGER]:              ['dashboard','tasks','approvals','assets','content','campaigns','locations','notifications','settings'],
@@ -1089,11 +1157,12 @@ const Store = (() => {
         { page: 'feedback',      icon: '💬', label: 'Shift Feedback' },
         { page: 'notifications', icon: '🔔', label: 'Notifications' },
         { page: 'team',          icon: '👥', label: 'Team' },
+        { page: 'admin',         icon: '🏢', label: 'Admin Panel' },
         { page: 'settings',      icon: '⚙️', label: 'Settings' },
       ];
       const map = {
-        [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','controller','feedback','notifications','team','settings'],
-        [ROLES.OPERATIONS]:           ['assets','content','campaigns','approvals','controller','feedback','notifications','team','settings'],
+        [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','settings'],
+        [ROLES.OPERATIONS]:           ['assets','content','campaigns','approvals','controller','feedback','notifications','team','admin','settings'],
         [ROLES.CONTROLLER]:           ['campaigns','controller','settings'],
         [ROLES.DIRECTOR]:             ['content','campaigns','approvals','notifications','settings'],
         [ROLES.MANAGER]:              ['assets','content','campaigns','notifications','settings'],
@@ -1132,6 +1201,11 @@ const Store = (() => {
     getComments, getEventComments, getVisibleEventComments, getHiddenCommentCount,
     addComment, deleteComment, getVisibilityPresets,
     nextStatus, prevStatus, STATUS_ORDER,
+    /* Org Structure CRUD */
+    listDepartments, addDepartment, deleteDepartment,
+    listOrgRoles, addOrgRole, deleteOrgRole,
+    listPeople, addPerson, updatePerson, deletePerson,
+    getScopePages,
     Permissions,
     seed, clearAll, checkExpiryAndCreateTasks,
     /* API adapter — use when API_ENABLED is flipped to true */
