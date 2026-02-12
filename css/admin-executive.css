@@ -1,0 +1,374 @@
+/* ─── Executive Admin Mode — Dark Blue Theme ─── */
+/* Applied when body has class `admin-scope`.
+   Overrides ONLY visual layer — no layout, data, or routing changes. */
+
+/* ── Animated background glow ── */
+@keyframes adminGlow {
+  0%, 100% { opacity: 0.08; transform: translate(10%, -10%) scale(1); }
+  50%      { opacity: 0.12; transform: translate(5%, -5%) scale(1.15); }
+}
+
+body.admin-scope::before {
+  content: '';
+  position: fixed;
+  top: -120px; right: -120px;
+  width: 420px; height: 420px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(47,107,255,0.35) 0%, transparent 70%);
+  opacity: 0.08;
+  pointer-events: none;
+  z-index: 0;
+  animation: adminGlow 18s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+/* ── Base colors ── */
+body.admin-scope {
+  --bg:           #0B1220;
+  --card-bg:      #111A2E;
+  --white:        #111A2E;
+  --gray-50:      #16233D;
+  --gray-100:     #16233D;
+  --gray-200:     #1E2D4A;
+  --text:         #E8EDF5;
+  --text-muted:   #8FA4C3;
+  --text-light:   #5A6E8A;
+  --border:       rgba(255,255,255,0.06);
+  --pink-50:      rgba(47,107,255,0.12);
+  --pink-100:     rgba(47,107,255,0.18);
+  --pink-200:     rgba(47,107,255,0.25);
+  --pink-300:     #2F6BFF;
+  --pink-400:     #3A78FF;
+  --pink-500:     #2F6BFF;
+  --pink-600:     #3ED0FF;
+  --pink-700:     #2F6BFF;
+  --success:      #3DDC97;
+  --success-bg:   rgba(61,220,151,0.1);
+  --warning:      #F0B429;
+  --warning-bg:   rgba(240,180,41,0.1);
+  --danger:       #FF4D4F;
+  --danger-bg:    rgba(255,77,79,0.1);
+  --info:         #3ED0FF;
+  --info-bg:      rgba(62,208,255,0.08);
+  --shadow-sm:    0 2px 8px rgba(0,0,0,0.25);
+  --shadow-md:    0 4px 16px rgba(0,0,0,0.35);
+  --shadow-lg:    0 8px 32px rgba(0,0,0,0.4);
+  --shadow-pink:  0 6px 18px rgba(47,107,255,0.35);
+  background: #0B1220;
+  color: #E8EDF5;
+}
+
+/* ── Scrollbar ── */
+body.admin-scope ::-webkit-scrollbar-thumb { background: rgba(47,107,255,0.3); }
+
+/* ── Header ── */
+body.admin-scope .app-header {
+  background: rgba(11,18,32,0.92);
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(16px);
+}
+body.admin-scope .app-header .logo { color: #E8EDF5; }
+body.admin-scope .app-header .logo-icon {
+  background: #2F6BFF;
+  box-shadow: 0 0 12px rgba(47,107,255,0.25);
+}
+body.admin-scope .app-header .role-badge {
+  background: rgba(47,107,255,0.15) !important;
+  border: 1px solid rgba(47,107,255,0.3);
+  color: #3ED0FF !important;
+}
+
+/* ── Bottom Nav ── */
+body.admin-scope .bottom-nav {
+  background: rgba(11,18,32,0.95);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  backdrop-filter: blur(16px);
+}
+body.admin-scope .nav-item {
+  color: #5A6E8A;
+  transition: all 0.2s ease;
+}
+body.admin-scope .nav-item.active {
+  color: #3ED0FF;
+}
+body.admin-scope .nav-item.active::after {
+  background: #3ED0FF;
+  box-shadow: 0 0 8px rgba(62,208,255,0.4);
+}
+body.admin-scope .nav-item svg {
+  stroke: currentColor;
+}
+
+/* ── Cards ── */
+body.admin-scope .card {
+  background: #111A2E;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
+  transition: all 0.2s ease;
+}
+body.admin-scope .card:hover {
+  border-color: rgba(47,107,255,0.15);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(47,107,255,0.1);
+}
+body.admin-scope .card-pink {
+  background: linear-gradient(135deg, rgba(47,107,255,0.08), rgba(62,208,255,0.05));
+}
+
+/* Stat cards */
+body.admin-scope .stat-card {
+  background: #111A2E;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+body.admin-scope .stat-number { color: #3ED0FF; }
+
+/* ── Buttons ── */
+body.admin-scope .btn {
+  transition: all 0.2s ease;
+}
+body.admin-scope .btn-primary {
+  background: #2F6BFF;
+  color: white;
+  box-shadow: 0 6px 18px rgba(47,107,255,0.35);
+  border-radius: 14px;
+  font-weight: 600;
+}
+body.admin-scope .btn-primary:hover {
+  background: #3A78FF;
+  box-shadow: 0 6px 22px rgba(47,107,255,0.45);
+}
+body.admin-scope .btn-secondary {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #E8EDF5;
+}
+body.admin-scope .btn-secondary:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: rgba(255,255,255,0.12);
+}
+body.admin-scope .btn-ghost {
+  color: #8FA4C3;
+}
+body.admin-scope .btn-ghost:hover {
+  background: rgba(47,107,255,0.1);
+  color: #3ED0FF;
+}
+body.admin-scope .btn-danger {
+  background: #FF4D4F;
+  color: white;
+  border: none;
+}
+body.admin-scope .btn-success {
+  background: #3DDC97;
+  color: #0B1220;
+}
+
+/* ── FAB ── */
+body.admin-scope .fab {
+  background: #2F6BFF;
+  box-shadow: 0 6px 18px rgba(47,107,255,0.4);
+}
+
+/* ── Drawer ── */
+body.admin-scope .drawer {
+  background: #111A2E;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+body.admin-scope .drawer-handle { background: rgba(255,255,255,0.12); }
+body.admin-scope .drawer-title { color: #E8EDF5; }
+body.admin-scope .drawer-item {
+  color: #8FA4C3;
+  border-bottom-color: rgba(255,255,255,0.04);
+  transition: all 0.2s ease;
+}
+body.admin-scope .drawer-item:hover {
+  background: rgba(47,107,255,0.06);
+  color: #E8EDF5;
+}
+body.admin-scope .drawer-item .drawer-icon { color: #5A6E8A; }
+body.admin-scope .drawer-item .drawer-label { color: #8FA4C3; }
+
+/* ── Modal ── */
+body.admin-scope .modal-overlay { background: rgba(5,10,20,0.6); }
+body.admin-scope .modal {
+  background: #111A2E;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+body.admin-scope .modal-handle { background: rgba(255,255,255,0.12); }
+body.admin-scope .modal-title { color: #E8EDF5; }
+
+/* ── Forms ── */
+body.admin-scope .form-input,
+body.admin-scope .form-select,
+body.admin-scope .form-textarea {
+  background: #16233D;
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #E8EDF5;
+  transition: all 0.2s ease;
+}
+body.admin-scope .form-input::placeholder,
+body.admin-scope .form-textarea::placeholder {
+  color: #5A6E8A;
+}
+body.admin-scope .form-input:focus,
+body.admin-scope .form-select:focus,
+body.admin-scope .form-textarea:focus {
+  border-color: rgba(47,107,255,0.5);
+  box-shadow: 0 0 0 3px rgba(47,107,255,0.15);
+}
+body.admin-scope .form-label {
+  color: #8FA4C3;
+  letter-spacing: 0.08em;
+}
+
+/* ── Section headers ── */
+body.admin-scope .section-title {
+  color: #8FA4C3;
+  letter-spacing: 0.08em;
+}
+body.admin-scope .section-count {
+  background: rgba(47,107,255,0.15);
+  color: #3ED0FF;
+}
+
+/* ── Chips ── */
+body.admin-scope .chip-todo,
+body.admin-scope .chip-progress { background: rgba(47,107,255,0.12); color: #3ED0FF; }
+body.admin-scope .chip-todo .chip-dot,
+body.admin-scope .chip-progress .chip-dot { background: #2F6BFF; }
+body.admin-scope .chip-review { background: rgba(255,255,255,0.06); color: #8FA4C3; }
+body.admin-scope .chip-review .chip-dot { background: #5A6E8A; }
+body.admin-scope .chip-done { background: rgba(61,220,151,0.1); color: #3DDC97; }
+body.admin-scope .chip-done .chip-dot { background: #3DDC97; }
+body.admin-scope .chip-role { background: rgba(47,107,255,0.12); color: #3ED0FF; }
+
+/* ── Avatar ── */
+body.admin-scope .avatar {
+  background: rgba(47,107,255,0.2);
+  color: #3ED0FF;
+}
+
+/* ── Priority ── */
+body.admin-scope .priority-high   { border-left-color: #FF4D4F; }
+body.admin-scope .priority-medium { border-left-color: rgba(47,107,255,0.4); }
+body.admin-scope .priority-low    { border-left-color: rgba(255,255,255,0.08); }
+
+/* ── Page title / subtitle ── */
+body.admin-scope .page-title {
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+body.admin-scope .page-subtitle {
+  color: #8FA4C3;
+}
+
+/* ── Typography tweaks ── */
+body.admin-scope h1, body.admin-scope h2, body.admin-scope h3 {
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+/* ── Inline styles override — generic text elements ── */
+body.admin-scope .card-title { color: #E8EDF5; }
+body.admin-scope .card-meta  { color: #8FA4C3; }
+body.admin-scope .assignee-name { color: #E8EDF5; }
+body.admin-scope .due-date { color: #5A6E8A; }
+
+/* ── Preview banner (admin mode) ── */
+body.admin-scope .preview-banner {
+  background: linear-gradient(90deg, #2F6BFF, #1A4BBF);
+}
+
+/* ── Org Preview overlay — dark override ── */
+body.admin-scope #org-preview-overlay {
+  background: #0B1220;
+}
+body.admin-scope #org-preview-overlay > div {
+  background: #0B1220;
+}
+
+/* ── Role Switcher drawer ── */
+body.admin-scope .role-btn {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #8FA4C3;
+  transition: all 0.2s ease;
+}
+body.admin-scope .role-btn:hover {
+  background: rgba(47,107,255,0.1);
+  border-color: rgba(47,107,255,0.25);
+  color: #3ED0FF;
+}
+body.admin-scope .role-btn.active {
+  background: rgba(47,107,255,0.15);
+  border-color: rgba(47,107,255,0.35);
+  color: #3ED0FF;
+}
+
+/* ── Task items / list items ── */
+body.admin-scope .task-item,
+body.admin-scope .approval-item,
+body.admin-scope .asset-item,
+body.admin-scope .content-item,
+body.admin-scope .team-item,
+body.admin-scope .campaign-item,
+body.admin-scope .location-item {
+  border-bottom-color: rgba(255,255,255,0.04);
+  transition: all 0.2s ease;
+}
+body.admin-scope .task-item:hover,
+body.admin-scope .approval-item:hover {
+  background: rgba(47,107,255,0.04);
+}
+
+/* ── Empty states ── */
+body.admin-scope .empty-state { color: #5A6E8A; }
+
+/* ── Tabs / filters ── */
+body.admin-scope .tab-bar {
+  background: #16233D;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+body.admin-scope .tab-item {
+  color: #5A6E8A;
+  transition: all 0.2s ease;
+}
+body.admin-scope .tab-item.active {
+  color: #3ED0FF;
+  background: rgba(47,107,255,0.12);
+}
+
+/* ── Comments ── */
+body.admin-scope .comment-bubble {
+  background: #16233D;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #E8EDF5;
+}
+
+/* ── Notifications ── */
+body.admin-scope .notification-item {
+  border-left-width: 3px;
+  background: #111A2E;
+  transition: all 0.2s ease;
+}
+
+/* ── Smoothness: global transition on interactive elements ── */
+body.admin-scope button,
+body.admin-scope input,
+body.admin-scope select,
+body.admin-scope textarea,
+body.admin-scope a {
+  transition: all 0.2s ease;
+}
+
+/* ── Links ── */
+body.admin-scope a { color: #3ED0FF; }
+body.admin-scope a:hover { color: #2F6BFF; }
+
+/* ── Selection ── */
+body.admin-scope ::selection {
+  background: rgba(47,107,255,0.3);
+  color: #fff;
+}

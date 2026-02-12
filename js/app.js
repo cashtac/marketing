@@ -162,7 +162,15 @@ const App = (() => {
     container.innerHTML = PAGES[_currentPage]();
     _updateNav();
     _updatePreviewBanner();
+    _updateAdminScope();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ── Executive Admin scope toggle ── */
+  function _updateAdminScope() {
+    const role = Store.getActiveRole();
+    const isAdmin = role === Store.ROLES.ADMIN || role === Store.ROLES.OPERATIONS;
+    document.body.classList.toggle('admin-scope', isAdmin);
   }
 
   function _updateNav() {
