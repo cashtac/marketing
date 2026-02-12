@@ -13,6 +13,9 @@ const App = (() => {
     campaigns:    () => CampaignsPage.render(),
     locations:    () => LocationsPage.render(),
     team:         () => TeamPage.render(),
+    controller:   () => ControllerPage.render(),
+    feedback:     () => FeedbackPage.render(),
+    notifications:() => NotificationsPage.render(),
     settings:     () => SettingsPage.render(),
     taskview:     () => TaskViewPage.render(),
     locationview: () => LocationsPage.render(),
@@ -21,7 +24,7 @@ const App = (() => {
   };
 
   /* Pages that live under the "More" drawer (not primary nav tabs) */
-  const MORE_PAGES = ['approvals','assets','content','campaigns','team','settings'];
+  const MORE_PAGES = ['approvals','assets','content','campaigns','team','controller','feedback','notifications','settings'];
 
   function init() {
     Store.seed();
@@ -185,8 +188,8 @@ const App = (() => {
     const activeRole = Store.getActiveRole();
     const session = AuthManager.getSession();
     badge.textContent = activeRole;
-    /* Only Admin users can switch roles (preview mode) */
-    const isRealAdmin = session && session.role === Store.ROLES.ADMIN;
+    /* Only Admin/Operations users can switch roles (preview mode) */
+    const isRealAdmin = session && (session.role === Store.ROLES.ADMIN || session.role === Store.ROLES.OPERATIONS);
     if (isRealAdmin) {
       badge.onclick = () => App.openRoleSwitcher();
       badge.style.cursor = 'pointer';
@@ -251,11 +254,15 @@ const App = (() => {
     const R = Store.ROLES;
     const roles = [
       { role: R.ADMIN,                icon: '🛡️', label: 'Admin',               desc: 'Full system access' },
+      { role: R.OPERATIONS,           icon: '🏗️', label: 'Operations',           desc: 'Full visibility & management' },
+      { role: R.CONTROLLER,           icon: '📊', label: 'Controller',           desc: 'Analytics & reports (preview)' },
       { role: R.DIRECTOR,             icon: '👔', label: 'Marketing Director',   desc: 'Approve & oversee (preview)' },
       { role: R.MANAGER,              icon: '📋', label: 'Marketing Manager',    desc: 'Manage tasks & assets (preview)' },
       { role: R.DESIGNER,             icon: '🎨', label: 'Graphic Designer',     desc: 'Design assignments (preview)' },
       { role: R.SOCIAL_MEDIA_INTERN,  icon: '📱', label: 'Social Media Intern',  desc: 'Content & social (preview)' },
       { role: R.PHOTOGRAPHER,         icon: '📷', label: 'Photographer',         desc: 'Upload assets only (preview)' },
+      { role: R.SUSTAINABILITY,       icon: '🌿', label: 'Sustainability',       desc: 'Green initiatives (preview)' },
+      { role: R.DIETITIAN,            icon: '🥗', label: 'Dietitian',            desc: 'Nutrition campaigns (preview)' },
     ];
     body.innerHTML = roles.map(r => `
       <button class="role-option ${r.role === activeRole ? 'active' : ''}" onclick="App.switchRole('${r.role}')">

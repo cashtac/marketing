@@ -12,21 +12,25 @@
 const Store = (() => {
 
   /* ═══ Seed Version — bump to force reseed ═══ */
-  const VERSION = '2026-02-11-v6';
+  const VERSION = '2026-02-11-v7';
   const VERSION_KEY = 'ims_seed_version';
 
   /* ═══ Role Constants ═══ */
   const ROLES = {
     ADMIN: 'Admin',
+    OPERATIONS: 'Operations',
+    CONTROLLER: 'Controller',
     DIRECTOR: 'Marketing Director',
     MANAGER: 'Marketing Manager',
     DESIGNER: 'Graphic Designer',
     SOCIAL_MEDIA_INTERN: 'Social Media Intern',
     PHOTOGRAPHER: 'Photographer',
+    SUSTAINABILITY: 'Sustainability',
+    DIETITIAN: 'Dietitian',
   };
   const ALL_ROLES = Object.values(ROLES);
   const MARKETING_TEAM = [...ALL_ROLES];                             // everyone
-  const LEADERSHIP     = [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER]; // restricted
+  const LEADERSHIP     = [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.DIRECTOR, ROLES.MANAGER]; // restricted
 
   /* ═══ API Adapter Config ═══ */
   const API_ENABLED = false;
@@ -693,6 +697,11 @@ const Store = (() => {
       { id: 'usr_dc',             fullName: 'DC',             name: 'DC',             role: ROLES.DESIGNER,             username: 'dc',     avatarInitials: 'DC' },
       { id: 'usr_masha_alieva',   fullName: 'Masha Alieva',   name: 'Masha Alieva',   role: ROLES.SOCIAL_MEDIA_INTERN,  username: 'masha',  avatarInitials: 'MA' },
       { id: 'usr_daniil_osipov',  fullName: 'Daniil Osipov',  name: 'Daniil Osipov',  role: ROLES.ADMIN,                username: 'daniil', avatarInitials: 'DO' },
+      { id: 'usr_ops_manager',    fullName: 'Jordan Lee',     name: 'Jordan Lee',     role: ROLES.OPERATIONS,           username: 'jordan', avatarInitials: 'JL' },
+      { id: 'usr_controller',     fullName: 'Taylor Kim',     name: 'Taylor Kim',     role: ROLES.CONTROLLER,           username: 'taylor', avatarInitials: 'TK' },
+      { id: 'usr_photographer',   fullName: 'Alex Photo',     name: 'Alex Photo',     role: ROLES.PHOTOGRAPHER,         username: 'alex',   avatarInitials: 'AP' },
+      { id: 'usr_sustainability', fullName: 'Gabby Green',    name: 'Gabby Green',    role: ROLES.SUSTAINABILITY,       username: 'gabby',  avatarInitials: 'GG' },
+      { id: 'usr_dietitian',      fullName: 'Dr. Nutrition',  name: 'Dr. Nutrition',  role: ROLES.DIETITIAN,            username: 'drnutri',avatarInitials: 'DN' },
     ];
     saveTeam(team);
 
@@ -939,12 +948,16 @@ const Store = (() => {
   const Permissions = {
     /*  Which pages each role can see  */
     pages: {
-      [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','settings'],
-      [ROLES.DIRECTOR]:             ['dashboard','approvals','content','campaigns','locations','settings'],
-      [ROLES.MANAGER]:              ['dashboard','tasks','approvals','assets','content','campaigns','locations','settings'],
-      [ROLES.DESIGNER]:             ['dashboard','tasks','assets','content','locations','settings'],
-      [ROLES.SOCIAL_MEDIA_INTERN]:  ['dashboard','tasks','assets','content','locations','settings'],
+      [ROLES.ADMIN]:                ALL_ROLES.length && ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','settings'],
+      [ROLES.OPERATIONS]:           ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','settings'],
+      [ROLES.CONTROLLER]:           ['dashboard','controller','campaigns','locations','settings'],
+      [ROLES.DIRECTOR]:             ['dashboard','approvals','content','campaigns','locations','notifications','settings'],
+      [ROLES.MANAGER]:              ['dashboard','tasks','approvals','assets','content','campaigns','locations','notifications','settings'],
+      [ROLES.DESIGNER]:             ['dashboard','tasks','assets','locations','notifications','settings'],
+      [ROLES.SOCIAL_MEDIA_INTERN]:  ['dashboard','tasks','content','notifications','settings'],
       [ROLES.PHOTOGRAPHER]:         ['dashboard','assets','settings'],
+      [ROLES.SUSTAINABILITY]:       ['dashboard','campaigns','locations','settings'],
+      [ROLES.DIETITIAN]:            ['dashboard','campaigns','settings'],
     },
 
     /*  Action capabilities per role  */
@@ -954,42 +967,52 @@ const Store = (() => {
       const role = getActiveRole();
       const matrix = {
         /* Task actions */
-        'create_task':       [ROLES.ADMIN],
-        'edit_task':         [ROLES.ADMIN, ROLES.MANAGER],
+        'create_task':       [ROLES.ADMIN, ROLES.OPERATIONS],
+        'edit_task':         [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER],
         'delete_task':       [ROLES.ADMIN],
-        'advance_task':      [ROLES.ADMIN, ROLES.MANAGER, ROLES.DESIGNER, ROLES.SOCIAL_MEDIA_INTERN],
+        'advance_task':      [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER, ROLES.DESIGNER, ROLES.SOCIAL_MEDIA_INTERN],
 
         /* Approval actions */
         'approve':           [ROLES.ADMIN, ROLES.DIRECTOR],
         'request_changes':   [ROLES.ADMIN, ROLES.DIRECTOR],
         'submit_approval':   [ROLES.ADMIN, ROLES.MANAGER],
-        'comment_approval':  [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER],
+        'comment_approval':  [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.DIRECTOR, ROLES.MANAGER, ROLES.CONTROLLER],
 
         /* Asset actions */
-        'create_asset':      [ROLES.ADMIN, ROLES.MANAGER],
-        'edit_asset':        [ROLES.ADMIN, ROLES.MANAGER],
+        'create_asset':      [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER],
+        'edit_asset':        [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER],
         'delete_asset':      [ROLES.ADMIN],
+        'upload_asset':      [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER, ROLES.DESIGNER, ROLES.PHOTOGRAPHER],
 
         /* Location actions */
-        'manage_locations':  [ROLES.ADMIN, ROLES.MANAGER],
-        'assign_content':    [ROLES.ADMIN, ROLES.MANAGER, ROLES.DESIGNER, ROLES.SOCIAL_MEDIA_INTERN],
+        'manage_locations':  [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER],
+        'assign_content':    [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER, ROLES.DESIGNER, ROLES.SOCIAL_MEDIA_INTERN],
 
         /* Campaign actions */
-        'manage_campaigns':  [ROLES.ADMIN, ROLES.MANAGER],
+        'manage_campaigns':  [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER],
 
         /* Content actions */
-        'create_content':    [ROLES.ADMIN, ROLES.MANAGER, ROLES.SOCIAL_MEDIA_INTERN],
-        'edit_content':      [ROLES.ADMIN, ROLES.MANAGER, ROLES.SOCIAL_MEDIA_INTERN],
+        'create_content':    [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER, ROLES.SOCIAL_MEDIA_INTERN],
+        'edit_content':      [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER, ROLES.SOCIAL_MEDIA_INTERN],
         'delete_content':    [ROLES.ADMIN],
 
         /* Comment visibility */
-        'post_restricted':   [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MANAGER],
+        'post_restricted':   [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.DIRECTOR, ROLES.MANAGER],
+
+        /* Controller actions */
+        'view_analytics':    [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.CONTROLLER],
+        'comment_campaign':  [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.CONTROLLER, ROLES.DIRECTOR, ROLES.MANAGER],
+        'escalate_issue':    [ROLES.CONTROLLER],
+
+        /* Feedback actions */
+        'submit_feedback':   [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER, ROLES.DESIGNER, ROLES.SOCIAL_MEDIA_INTERN, ROLES.PHOTOGRAPHER],
+        'view_feedback':     [ROLES.ADMIN, ROLES.OPERATIONS, ROLES.MANAGER],
 
         /* Team management */
-        'manage_team':       [ROLES.ADMIN],
+        'manage_team':       [ROLES.ADMIN, ROLES.OPERATIONS],
 
         /* Settings */
-        'export_data':       [ROLES.ADMIN],
+        'export_data':       [ROLES.ADMIN, ROLES.OPERATIONS],
         'clear_data':        [ROLES.ADMIN],
       };
       return (matrix[action] || []).includes(role);
@@ -1023,8 +1046,8 @@ const Store = (() => {
     filterTasks(tasks) {
       const role = getActiveRole();
       const name = getSettings().name;
-      if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return tasks;
-      // Designers & SMM see only their assigned tasks
+      if (role === ROLES.ADMIN || role === ROLES.OPERATIONS || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return tasks;
+      // Others see only their assigned tasks
       return tasks.filter(t => t.assignee === name);
     },
 
@@ -1032,8 +1055,8 @@ const Store = (() => {
     filterApprovals(approvals) {
       const role = getActiveRole();
       const name = getSettings().name;
-      if (role === ROLES.ADMIN || role === ROLES.DIRECTOR) return approvals;
-      // Manager sees all (they submit); designers/SMM see only their own
+      if (role === ROLES.ADMIN || role === ROLES.OPERATIONS || role === ROLES.DIRECTOR) return approvals;
+      // Manager sees all (they submit); others see only their own
       if (role === ROLES.MANAGER) return approvals;
       return approvals.filter(a => a.submittedBy === name);
     },
@@ -1042,7 +1065,7 @@ const Store = (() => {
     filterAssets(assets) {
       const role = getActiveRole();
       const name = getSettings().name;
-      if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return assets;
+      if (role === ROLES.ADMIN || role === ROLES.OPERATIONS || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return assets;
       return assets.filter(a => a.owner === name);
     },
 
@@ -1050,7 +1073,7 @@ const Store = (() => {
     filterContent(content) {
       const role = getActiveRole();
       const name = getSettings().name;
-      if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return content;
+      if (role === ROLES.ADMIN || role === ROLES.OPERATIONS || role === ROLES.MANAGER || role === ROLES.DIRECTOR) return content;
       return content.filter(c => c.assignee === name);
     },
 
@@ -1058,20 +1081,27 @@ const Store = (() => {
     drawerItems() {
       const role = getActiveRole();
       const ALL = [
-        { page: 'assets',    icon: '📁', label: 'Assets' },
-        { page: 'content',   icon: '🎬', label: 'Content' },
-        { page: 'campaigns', icon: '📣', label: 'Campaigns' },
-        { page: 'approvals', icon: '⏱️', label: 'Approvals' },
-        { page: 'team',      icon: '👥', label: 'Team' },
-        { page: 'settings',  icon: '⚙️', label: 'Settings' },
+        { page: 'assets',        icon: '📁', label: 'Assets' },
+        { page: 'content',       icon: '🎬', label: 'Content' },
+        { page: 'campaigns',     icon: '📣', label: 'Campaigns' },
+        { page: 'approvals',     icon: '⏱️', label: 'Approvals' },
+        { page: 'controller',    icon: '📊', label: 'Analytics' },
+        { page: 'feedback',      icon: '💬', label: 'Shift Feedback' },
+        { page: 'notifications', icon: '🔔', label: 'Notifications' },
+        { page: 'team',          icon: '👥', label: 'Team' },
+        { page: 'settings',      icon: '⚙️', label: 'Settings' },
       ];
       const map = {
-        [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','team','settings'],
-        [ROLES.DIRECTOR]:             ['content','campaigns','approvals','settings'],
-        [ROLES.MANAGER]:              ['assets','content','campaigns','settings'],
-        [ROLES.DESIGNER]:             ['assets','content','settings'],
-        [ROLES.SOCIAL_MEDIA_INTERN]:  ['content','settings'],
+        [ROLES.ADMIN]:                ['assets','content','campaigns','approvals','controller','feedback','notifications','team','settings'],
+        [ROLES.OPERATIONS]:           ['assets','content','campaigns','approvals','controller','feedback','notifications','team','settings'],
+        [ROLES.CONTROLLER]:           ['campaigns','controller','settings'],
+        [ROLES.DIRECTOR]:             ['content','campaigns','approvals','notifications','settings'],
+        [ROLES.MANAGER]:              ['assets','content','campaigns','notifications','settings'],
+        [ROLES.DESIGNER]:             ['assets','notifications','settings'],
+        [ROLES.SOCIAL_MEDIA_INTERN]:  ['content','notifications','settings'],
         [ROLES.PHOTOGRAPHER]:         ['assets','settings'],
+        [ROLES.SUSTAINABILITY]:       ['campaigns','settings'],
+        [ROLES.DIETITIAN]:            ['campaigns','settings'],
       };
       const allowed = map[role] || ['settings'];
       return ALL.filter(i => allowed.includes(i.page));
