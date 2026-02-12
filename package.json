@@ -1,0 +1,19 @@
+{
+  "name": "marketing-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler pages dev . --d1 MARKETING_DB --kv AUTH_KV --port 8085",
+    "deploy": "wrangler pages deploy .",
+    "db:init": "wrangler d1 execute MARKETING_DB --file=schema.sql",
+    "db:init:local": "wrangler d1 execute MARKETING_DB --local --file=schema.sql",
+    "db:seed": "wrangler d1 execute MARKETING_DB --local --file=seed.sql"
+  },
+  "dependencies": {
+    "jose": "^5.2.0",
+    "otpauth": "^9.2.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.24.0"
+  }
+}

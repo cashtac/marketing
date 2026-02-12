@@ -104,6 +104,16 @@ const AdminPage = (() => {
           <div class="section-header"><span class="section-title">⚙️ Role Settings</span></div>
           ${_renderRoleSettings()}
         </div>
+
+        <!-- ─── E) Delegated Access Links ─── -->
+        <div class="card" style="margin-bottom:16px">
+          <div class="section-header">
+            <span class="section-title">🔗 Delegated Access Links</span>
+          </div>
+          <p style="font-size:0.78rem;color:var(--text-muted);margin:0 0 14px">Generate secure share links for role-based access. Links are 256-bit tokens, hashed server-side, and instantly revocable.</p>
+          ${_renderLinkForm()}
+          <div id="adm-links-list" style="margin-top:14px">${_renderLinksList()}</div>
+        </div>
       </div>
     `;
   }
@@ -470,6 +480,192 @@ const AdminPage = (() => {
   function _esc(s)      { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
   function _initials(n) { return (n || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2); }
 
+  /* ─── Delegated Access Links ─── */
+  const LINK_ROLES = [
+    'Operations', 'Controller', 'Marketing Director', 'Marketing Manager',
+    'Graphic Designer', 'Social Media Intern', 'Photographer',
+    'Sustainability', 'Dietitian', 'Viewer',
+  ];
+  const ALL_TABS = ['dashboard','tasks','approvals','assets','content','campaigns','locations','team','controller','feedback','notifications','threads','settings'];
+
+  function _renderLinkForm() {
+    return `
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select class="form-select" id="adm-link-role" style="flex:1;min-width:140px">
+            ${LINK_ROLES.map(r => `<option value="${r}">${r}</option>`).join('')}
+          </select>
+          <select class="form-select" id="adm-link-expiry" style="width:auto;min-width:100px">
+            <option value="1">1 day</option>
+            <option value="7" selected>7 days</option>
+            <option value="30">30 days</option>
+            <option value="90">90 days</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input class="form-input" id="adm-link-label" placeholder="Label (optional)" style="flex:1;min-width:120px" />
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="checkbox" id="adm-link-readonly" checked /> Read-only
+          </label>
+          <label style="font-size:0.75rem;display:flex;align-items:center;gap:4px;cursor:pointer">
+            <input type="checkbox" id="adm-link-device" /> Bind to device
+          </label>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="AdminPage.createLink()" style="align-self:flex-start;margin-top:4px">
+          🔑 Generate Link
+        </button>
+      </div>
+    `;
+  }
+
+  let _cachedLinks = null;
+  function _renderLinksList() {
+    // If we have server-backed auth, fetch from API
+    if (AuthManager.isAdmin && AuthManager.isAdmin()) {
+      // Async load — fill in later
+      _loadLinksAsync();
+      if (_cachedLinks && _cachedLinks.length > 0) {
+        return _renderLinksTable(_cachedLinks);
+      }
+      return '<p style="color:var(--text-muted);font-size:0.78rem">Loading links...</p>';
+    }
+    // Legacy mode — show localStorage-based links
+    return _renderLegacyLinks();
+  }
+
+  async function _loadLinksAsync() {
+    try {
+      const data = await AuthManager.listShareLinks();
+      if (data && data.links) {
+        _cachedLinks = data.links;
+        const el = document.getElementById('adm-links-list');
+        if (el) el.innerHTML = _renderLinksTable(data.links);
+      }
+    } catch (e) {
+      console.warn('[ADMIN] Could not load links:', e);
+    }
+  }
+
+  function _renderLinksTable(links) {
+    if (!links || links.length === 0) {
+      return '<p style="color:var(--text-muted);font-size:0.78rem">No active links.</p>';
+    }
+    const now = new Date();
+    return `<div style="display:flex;flex-direction:column;gap:8px">
+      ${links.map(l => {
+        const expired = new Date(l.expires_at || l.expiresAt) < now;
+        const status = l.revoked ? '🔴 Revoked' : expired ? '⏰ Expired' : '🟢 Active';
+        const statusColor = l.revoked ? '#e74c3c' : expired ? '#e67e22' : '#27ae60';
+        return `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--bg-card)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-weight:600;font-size:0.82rem">${_esc(l.label || l.role)}</span>
+              <span style="font-size:0.68rem;color:${statusColor};font-weight:600">${status}</span>
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:8px">
+              <span>🎭 ${_esc(l.role)}</span>
+              <span>📅 ${l.expires_at ? new Date(l.expires_at).toLocaleDateString() : (l.expiresAt ? new Date(l.expiresAt).toLocaleDateString() : '—')}</span>
+              <span>👁️ ${l.use_count || l.useCount || 0} uses</span>
+              ${l.device_bound || l.deviceBound ? '<span>🔒 Device-bound</span>' : ''}
+              ${l.read_only || l.readOnly ? '<span>📖 Read-only</span>' : ''}
+            </div>
+            ${!l.revoked && !expired ? `
+              <div style="margin-top:8px;display:flex;gap:8px">
+                <button class="btn btn-danger btn-sm" onclick="AdminPage.revokeLink('${l.id}')">Revoke</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>`;
+  }
+
+  function _renderLegacyLinks() {
+    const users = AuthManager.listUsers();
+    if (!users || users.length === 0) return '<p style="color:var(--text-muted);font-size:0.78rem">No users.</p>';
+    const now = new Date();
+    return `<div style="display:flex;flex-direction:column;gap:6px">
+      ${users.filter(u => u.role !== 'Admin').map(u => {
+        const expired = new Date(u.token_expiry) < now;
+        const status = expired ? '⏰ Expired' : '🟢 Active';
+        const link = `${window.location.origin}/?auth=${u.access_token}`;
+        return `
+          <div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--bg-card)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-weight:600;font-size:0.82rem">${_esc(u.name)}</span>
+              <span style="font-size:0.68rem;color:${expired ? '#e67e22' : '#27ae60'};font-weight:600">${status}</span>
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:6px">
+              🎭 ${_esc(u.role)} · 📅 Expires ${new Date(u.token_expiry).toLocaleDateString()}
+            </div>
+            ${!expired ? `
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-sm" onclick="navigator.clipboard.writeText('${link}');this.textContent='✓ Copied';setTimeout(()=>this.textContent='📋 Copy Link',2000)" style="font-size:0.7rem">📋 Copy Link</button>
+                <button class="btn btn-sm" onclick="AdminPage.regenerateLegacy('${u.user_id}')" style="font-size:0.7rem">🔄 Regenerate</button>
+                <button class="btn btn-danger btn-sm" onclick="AdminPage.revokeLegacy('${u.user_id}')" style="font-size:0.7rem">✕ Revoke</button>
+              </div>
+            ` : `
+              <button class="btn btn-sm" onclick="AdminPage.regenerateLegacy('${u.user_id}')" style="font-size:0.7rem">🔄 Regenerate</button>
+            `}
+          </div>
+        `;
+      }).join('')}
+    </div>`;
+  }
+
+  async function createLink() {
+    const role     = document.getElementById('adm-link-role').value;
+    const expiry   = parseInt(document.getElementById('adm-link-expiry').value);
+    const label    = document.getElementById('adm-link-label').value.trim();
+    const readOnly = document.getElementById('adm-link-readonly').checked;
+    const deviceBound = document.getElementById('adm-link-device').checked;
+
+    if (AuthManager.isAdmin && AuthManager.isAdmin()) {
+      // Server-backed
+      const result = await AuthManager.createShareLink({
+        role, label: label || `${role} link`,
+        readOnly, deviceBound,
+        expiresInDays: expiry,
+        allowedTabs: ALL_TABS,
+      });
+      if (result && result.link) {
+        await navigator.clipboard.writeText(result.link).catch(() => {});
+        alert(`✅ Link created!\n\n${result.link}\n\n(Copied to clipboard)`);
+        _loadLinksAsync();
+      } else {
+        alert('❌ Failed: ' + (result.error || 'Unknown error'));
+      }
+    } else {
+      // Legacy mode — just show existing links
+      alert('Server-backed link creation requires admin authentication.\n\nCurrently using legacy localStorage auth.');
+    }
+  }
+
+  async function revokeLink(linkId) {
+    if (!confirm('Revoke this link? It will be instantly invalidated.')) return;
+    const result = await AuthManager.revokeShareLink(linkId);
+    if (result && result.success) {
+      _loadLinksAsync();
+    } else {
+      alert('Failed to revoke: ' + (result.error || 'Unknown error'));
+    }
+  }
+
+  function revokeLegacy(userId) {
+    if (!confirm('Revoke this token?')) return;
+    AuthManager.revokeToken(userId);
+    App.refresh();
+  }
+
+  function regenerateLegacy(userId) {
+    const result = AuthManager.regenerateToken(userId);
+    if (result) {
+      navigator.clipboard.writeText(result.new_link).catch(() => {});
+      alert(`✅ New link for ${result.name}:\n\n${result.new_link}\n\n(Copied to clipboard)`);
+      App.refresh();
+    }
+  }
+
   return {
     render,
     addDept, deleteDept,
@@ -477,5 +673,7 @@ const AdminPage = (() => {
     editPerson, cancelEdit, savePerson, removePerson,
     openOrgPreview, closeOrgPreview,
     toggleNav, setHomeMode,
+    createLink, revokeLink,
+    revokeLegacy, regenerateLegacy,
   };
 })();

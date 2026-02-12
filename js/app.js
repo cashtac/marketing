@@ -47,13 +47,13 @@ const App = (() => {
   /* Pages that live under the "More" drawer (not primary nav tabs) */
   const MORE_PAGES = ['approvals','assets','content','campaigns','team','controller','feedback','notifications','admin','ideas','command','org-preview','threads','settings'];
 
-  function init() {
+  async function init() {
     Store.seed();
     _initFriendlyNames();
 
     /* ── Auth Gate ── */
     AuthManager.seedUsers();
-    const auth = AuthManager.checkAuth();
+    const auth = await AuthManager.checkAuth();
 
     if (!auth.authenticated) {
       _showAccessDenied(auth.reason);
@@ -62,23 +62,34 @@ const App = (() => {
 
     // Sync session role → Store settings
     Store.syncFromSession(auth.user);
-    console.log('%c[APP]', 'color:#0984e3;font-weight:bold', `Booting as ${auth.user.name} (${auth.user.role})`);
+    console.log('%c[APP]', 'color:#0984e3;font-weight:bold', `Booting as ${auth.user.name} (${auth.user.role}) [${auth.mode || 'legacy'}]`);
+
+    // Share mode restrictions
+    if (AuthManager.isShareMode()) {
+      console.log('%c[APP] Share link mode', 'color:#e17055;font-weight:bold', AuthManager.getShareContext());
+    }
 
     _currentPage = _parseHash();
-    if (!PAGES[_currentPage] || (_currentPage !== 'taskview' && _currentPage !== 'locationview' && _currentPage !== 'placementview' && _currentPage !== 'campaignview' && !Store.Permissions.canAccessPage(_currentPage))) {
+    if (!PAGES[_currentPage] || (_currentPage !== 'taskview' && _currentPage !== 'locationview' && _currentPage !== 'placementview' && _currentPage !== 'campaignview' && !_canAccess(_currentPage))) {
       _currentPage = Store.Permissions.defaultPage();
     }
     _render();
     updateHeader();
     window.addEventListener('hashchange', () => {
       _currentPage = _parseHash();
-      if (!PAGES[_currentPage] || (_currentPage !== 'taskview' && _currentPage !== 'locationview' && _currentPage !== 'placementview' && _currentPage !== 'campaignview' && !Store.Permissions.canAccessPage(_currentPage))) {
+      if (!PAGES[_currentPage] || (_currentPage !== 'taskview' && _currentPage !== 'locationview' && _currentPage !== 'placementview' && _currentPage !== 'campaignview' && !_canAccess(_currentPage))) {
         _currentPage = Store.Permissions.defaultPage();
         location.hash = _currentPage;
       }
       _render();
       _updateNav();
     });
+  }
+
+  /* ── Page access check (share mode aware) ── */
+  function _canAccess(page) {
+    if (AuthManager.isShareMode()) return AuthManager.canAccessPage(page);
+    return Store.Permissions.canAccessPage(page);
   }
 
   /* ── Access Denied Screen ── */
@@ -161,7 +172,7 @@ const App = (() => {
       _updateNav();
       return;
     }
-    if (!Store.Permissions.canAccessPage(page)) return;
+    if (!_canAccess(page)) return;
     _currentPage = page;
     location.hash = page;
     _render();
@@ -226,6 +237,19 @@ const App = (() => {
     /* Dynamic header title */
     if (title) title.textContent = friendly;
 
+    /* ── Share mode: locked badge ── */
+    if (AuthManager.isShareMode()) {
+      badge.textContent = 'Shared Access';
+      badge.onclick = null;
+      badge.style.cursor = 'default';
+      badge.style.background = 'var(--accent-secondary, #8b5cf6)';
+      badge.style.color = '#fff';
+      badge.style.fontSize = '0.65rem';
+      // Show share info badge
+      _showShareBadge();
+      return;
+    }
+
     if (Store.isPreviewMode()) {
       /* Preview mode: badge becomes exit button */
       badge.textContent = 'Exit Preview ✕';
@@ -247,6 +271,25 @@ const App = (() => {
       badge.style.background = '';
       badge.style.color = '';
     }
+    // Remove share badge if present
+    const existing = document.getElementById('share-access-badge');
+    if (existing) existing.remove();
+  }
+
+  function _showShareBadge() {
+    if (document.getElementById('share-access-badge')) return;
+    const ctx = AuthManager.getShareContext();
+    const badge = document.createElement('div');
+    badge.id = 'share-access-badge';
+    badge.style.cssText = `
+      position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+      background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;
+      padding:6px 16px;border-radius:20px;font-size:0.7rem;font-weight:600;
+      box-shadow:0 2px 12px rgba(139,92,246,0.4);z-index:999;
+      display:flex;align-items:center;gap:6px;
+    `;
+    badge.innerHTML = `<span style="font-size:0.9em">🔗</span> Shared Role Access${ctx && ctx.readOnly ? ' · Read Only' : ''}`;
+    document.body.appendChild(badge);
   }
 
   /* ── More Drawer ── */
@@ -344,12 +387,82 @@ const App = (() => {
     document.body.style.overflow = '';
   }
 
+  /* ── Admin Login (server-backed) ── */
+  let _adminChallengeId = null;
+
+  async function adminLogin() {
+    const email = document.getElementById('admin-email').value.trim();
+    const password = document.getElementById('admin-password').value;
+    const errorEl = document.getElementById('admin-login-error');
+    errorEl.style.display = 'none';
+
+    if (!email || !password) {
+      errorEl.textContent = 'Email and password required';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('admin-login-btn');
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+
+    try {
+      const result = await AuthManager.login(email, password);
+      if (result.success) {
+        _adminChallengeId = result.challengeId;
+        document.getElementById('admin-login-step1').style.display = 'none';
+        document.getElementById('admin-login-step2').style.display = 'block';
+        document.getElementById('admin-2fa-code').focus();
+      } else {
+        errorEl.textContent = result.error || 'Login failed';
+        errorEl.style.display = 'block';
+      }
+    } catch (e) {
+      errorEl.textContent = 'Connection error. Is the API running?';
+      errorEl.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
+  }
+
+  async function adminVerify2FA() {
+    const code = document.getElementById('admin-2fa-code').value.trim();
+    const errorEl = document.getElementById('admin-login-error');
+    errorEl.style.display = 'none';
+
+    if (!code || code.length !== 6) {
+      errorEl.textContent = 'Enter 6-digit code';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    const btn = document.getElementById('admin-2fa-btn');
+    btn.disabled = true;
+    btn.textContent = 'Verifying...';
+
+    try {
+      const result = await AuthManager.verify2FA(_adminChallengeId, code);
+      if (result.success) {
+        document.getElementById('admin-login-overlay').style.display = 'none';
+        // Reload to boot with admin session
+        window.location.reload();
+      } else {
+        errorEl.textContent = result.error || '2FA verification failed';
+        errorEl.style.display = 'block';
+      }
+    } catch (e) {
+      errorEl.textContent = 'Verification error';
+      errorEl.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Verify';
+  }
+
   return {
     init, navigate, refresh, updateHeader, showModal, closeModal,
     openMoreDrawer, closeMoreDrawer,
     openRoleSwitcher, closeRoleSwitcher, switchRole, exitPreview,
+    adminLogin, adminVerify2FA,
     logout: () => AuthManager.logout(),
   };
 })();
-
-document.addEventListener('DOMContentLoaded', App.init);
