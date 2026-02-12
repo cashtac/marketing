@@ -331,7 +331,7 @@ const AuthManager = (() => {
   }
 
   /* ═══ Legacy seeds (kept for backward compat) ═══ */
-  const SEED_VERSION = 2; // Bump to force re-seed on existing devices
+  const SEED_VERSION = 3; // Bump to force re-seed on existing devices
 
   function seedUsers() {
     const storedVersion = parseInt(localStorage.getItem('ims_seed_version') || '0');
@@ -357,10 +357,10 @@ const AuthManager = (() => {
     const MKTDIR_TOKEN   = 'CashTacMktDir2026SecureAccessViewOnlyLinkDemo';
 
     const users = [
-      { user_id: 'usr_daniil_osipov',  name: 'Daniil Osipov',   role: 'Admin',                email: 'dosipov@gmu.edu',       access_token: ADMIN_TOKEN,    token_expiry: '2026-02-13T15:22:00.000Z' },
+      { user_id: 'usr_daniil_osipov',  name: 'Daniil Osipov',   role: 'Admin',                email: 'dosipov@gmu.edu',       access_token: ADMIN_TOKEN,    token_expiry: '2030-12-31T23:59:59.000Z' },
       { user_id: 'usr_ops_manager',     name: 'Jordan Lee',      role: 'Operations',           email: 'jlee@gmu.edu',          access_token: _generateToken(), token_expiry: _expiryFromNow(60) },
       { user_id: 'usr_controller',      name: 'Taylor Kim',      role: 'Controller',           email: 'tkim@gmu.edu',          access_token: _generateToken(), token_expiry: _expiryFromNow(30) },
-      { user_id: 'usr_sofya_vetrova',   name: 'Sofya Vetrova',   role: 'Marketing Director',   email: 'svetrova@gmu.edu',      access_token: MKTDIR_TOKEN,   token_expiry: '2026-02-13T15:22:00.000Z' },
+      { user_id: 'usr_sofya_vetrova',   name: 'Sofya Vetrova',   role: 'Marketing Director',   email: 'svetrova@gmu.edu',      access_token: MKTDIR_TOKEN,   token_expiry: '2030-12-31T23:59:59.000Z' },
       { user_id: 'usr_katie_kennedy',   name: 'Katie Kennedy',   role: 'Marketing Manager',    email: 'kkennedy@gmu.edu',      access_token: _generateToken(), token_expiry: _expiryFromNow(30) },
       { user_id: 'usr_anna_simakova',   name: 'Anna Simakova',   role: 'Graphic Designer',     email: 'asimakova@gmu.edu',     access_token: _generateToken(), token_expiry: _expiryFromNow(30) },
       { user_id: 'usr_dc',              name: 'DC',              role: 'Graphic Designer',     email: 'dc@gmu.edu',            access_token: _generateToken(), token_expiry: _expiryFromNow(30) },
