@@ -93,7 +93,7 @@ const DashboardPage = (() => {
             <div style="font-size:0.9rem;font-weight:600;color:var(--text)">
               ${totalUrgent === 0 ? "You're all clear" : `${totalUrgent} urgent item${totalUrgent !== 1 ? 's' : ''}`}
             </div>
-            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:1px">${_roleHint(role)}</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-top:1px">${_roleHint(activeRole)}</div>
           </div>
         </div>
 
