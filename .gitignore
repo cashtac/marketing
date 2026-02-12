@@ -1,0 +1,8 @@
+package.json
+node_modules/
+package-lock.json
+
+functions/
+wrangler.toml
+schema.sql
+seed.sql
