@@ -66,6 +66,8 @@ const DashboardPage = (() => {
         <p class="page-subtitle" style="margin-bottom:2px">${greet},</p>
         <h1 class="page-title" style="margin-bottom:8px">${_esc(settings.name)}</h1>
 
+        ${_renderPreviewControls()}
+
         <!-- Attention banner -->
         <div class="card ${totalUrgent > 0 ? 'card-pink' : ''}" style="margin-bottom:16px;padding:14px 16px;display:flex;align-items:center;gap:12px">
           <div style="font-size:1.6rem;line-height:1">${totalUrgent === 0 ? '✨' : '📌'}</div>
@@ -245,6 +247,47 @@ const DashboardPage = (() => {
     const hrs = Math.floor(mins / 60);
     if (hrs < 24) return `${hrs}h ago`;
     return `${Math.floor(hrs / 24)}d ago`;
+  }
+
+  /* ── Preview Controls (Admin only) ── */
+  function _renderPreviewControls() {
+    const session = typeof AuthManager !== 'undefined' ? AuthManager.getSession() : null;
+    const realRole = session ? session.role : Store.getSettings().role;
+    if (realRole !== Store.ROLES.ADMIN) return '';
+
+    const isPreview = Store.isPreviewMode();
+    const activeRole = Store.getActiveRole();
+
+    return `
+      <div style="margin-bottom:16px;padding:14px 16px;border-radius:var(--radius-md);background:var(--card-bg,var(--gray-50));border:1px solid var(--border,rgba(0,0,0,0.06))">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <span style="font-size:0.9rem">👁️</span>
+          <span style="font-size:0.78rem;font-weight:700;color:var(--text)">Role Preview</span>
+          ${isPreview ? '<span style="font-size:0.6rem;padding:2px 8px;border-radius:20px;background:rgba(232,166,64,0.15);color:#E8A640;font-weight:600;margin-left:auto">Active</span>' : '<span style="font-size:0.6rem;padding:2px 8px;border-radius:20px;background:rgba(47,107,255,0.1);color:var(--text-muted);font-weight:600;margin-left:auto">Admin View</span>'}
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="App.switchRole('${Store.ROLES.DIRECTOR}')" style="
+            flex:1;min-width:120px;padding:10px 12px;border:1px solid ${activeRole === Store.ROLES.DIRECTOR ? 'var(--pink-500)' : 'var(--border,rgba(0,0,0,0.08))'};border-radius:10px;
+            background:${activeRole === Store.ROLES.DIRECTOR ? 'rgba(232,75,108,0.1)' : 'transparent'};
+            color:${activeRole === Store.ROLES.DIRECTOR ? 'var(--pink-500)' : 'var(--text)'};
+            font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.2s;
+          ">👔 Preview Director</button>
+          <button onclick="App.switchRole('${Store.ROLES.OPERATIONS}')" style="
+            flex:1;min-width:120px;padding:10px 12px;border:1px solid ${activeRole === Store.ROLES.OPERATIONS ? '#D4AF37' : 'var(--border,rgba(0,0,0,0.08))'};border-radius:10px;
+            background:${activeRole === Store.ROLES.OPERATIONS ? 'rgba(212,175,55,0.1)' : 'transparent'};
+            color:${activeRole === Store.ROLES.OPERATIONS ? '#D4AF37' : 'var(--text)'};
+            font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.2s;
+          ">🏗️ Preview Operations</button>
+          ${isPreview ? `
+            <button onclick="App.exitPreview()" style="
+              flex:1;min-width:120px;padding:10px 12px;border:1px solid var(--danger, #e74c3c);border-radius:10px;
+              background:rgba(231,76,60,0.1);color:var(--danger, #e74c3c);
+              font-size:0.72rem;font-weight:600;cursor:pointer;transition:all 0.2s;
+            ">✕ Exit Preview</button>
+          ` : ''}
+        </div>
+      </div>
+    `;
   }
 
   return { render };

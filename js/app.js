@@ -226,8 +226,20 @@ const App = (() => {
     const roleName = document.getElementById('preview-role-name');
     if (!banner) return;
     if (Store.isPreviewMode()) {
-      const label = Store.getActiveRole();
-      roleName.textContent = label;
+      const roleKey = Store.getActiveRole();
+      const R = Store.ROLES;
+      const friendlyNames = {
+        [R.OPERATIONS]: 'Operations',
+        [R.DIRECTOR]: 'Marketing Director',
+        [R.CONTROLLER]: 'Controller',
+        [R.MANAGER]: 'Marketing Manager',
+        [R.DESIGNER]: 'Graphic Designer',
+        [R.SOCIAL_MEDIA_INTERN]: 'Social Media Intern',
+        [R.PHOTOGRAPHER]: 'Photographer',
+        [R.SUSTAINABILITY]: 'Sustainability',
+        [R.DIETITIAN]: 'Dietitian',
+      };
+      roleName.textContent = friendlyNames[roleKey] || roleKey;
       banner.style.display = 'flex';
       document.body.classList.add('has-preview-banner');
     } else {
