@@ -25,6 +25,20 @@ const App = (() => {
 
   function init() {
     Store.seed();
+
+    /* ── Auth Gate ── */
+    AuthManager.seedUsers();
+    const auth = AuthManager.checkAuth();
+
+    if (!auth.authenticated) {
+      _showAccessDenied(auth.reason);
+      return; // stop app boot
+    }
+
+    // Sync session role → Store settings
+    Store.syncFromSession(auth.user);
+    console.log('%c[APP]', 'color:#0984e3;font-weight:bold', `Booting as ${auth.user.name} (${auth.user.role})`);
+
     _currentPage = _parseHash();
     if (!PAGES[_currentPage] || (_currentPage !== 'taskview' && _currentPage !== 'locationview' && _currentPage !== 'placementview' && _currentPage !== 'campaignview' && !Store.Permissions.canAccessPage(_currentPage))) {
       _currentPage = Store.Permissions.defaultPage();
@@ -40,6 +54,27 @@ const App = (() => {
       _render();
       _updateNav();
     });
+  }
+
+  /* ── Access Denied Screen ── */
+  function _showAccessDenied(reason) {
+    console.log('%c[APP]', 'color:#d63031;font-weight:bold', `Access denied: ${reason}`);
+    document.getElementById('app-header').style.display = 'none';
+    document.getElementById('bottom-nav').style.display = 'none';
+    document.getElementById('app-content').innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;padding:2rem;text-align:center;">
+        <div style="font-size:4rem;margin-bottom:1rem;">🔒</div>
+        <h1 style="font-size:1.5rem;font-weight:700;color:var(--text-primary,#1a1a2e);margin-bottom:0.5rem;">Access Denied</h1>
+        <p style="color:var(--text-secondary,#6b7280);max-width:320px;line-height:1.5;margin-bottom:1.5rem;">
+          ${reason === 'invalid_token'
+            ? 'Your access link is invalid or has expired. Please request a new one from your administrator.'
+            : 'You need an access link to use this system. Contact your team administrator for access.'}
+        </p>
+        <div style="font-size:0.75rem;color:var(--text-tertiary,#9ca3af);font-family:monospace;">
+          ${reason === 'invalid_token' ? 'ERR_TOKEN_INVALID' : 'ERR_NO_SESSION'}
+        </div>
+      </div>
+    `;
   }
 
   function _parseHash() {
@@ -148,7 +183,17 @@ const App = (() => {
     const badge = document.getElementById('role-badge');
     if (!badge) return;
     const activeRole = Store.getActiveRole();
+    const session = AuthManager.getSession();
     badge.textContent = activeRole;
+    /* Only Admin users can switch roles (preview mode) */
+    const isRealAdmin = session && session.role === Store.ROLES.ADMIN;
+    if (isRealAdmin) {
+      badge.onclick = () => App.openRoleSwitcher();
+      badge.style.cursor = 'pointer';
+    } else {
+      badge.onclick = null;
+      badge.style.cursor = 'default';
+    }
     if (Store.isPreviewMode()) {
       badge.style.background = 'var(--warning, #E8A640)';
       badge.style.color = '#fff';
@@ -210,6 +255,7 @@ const App = (() => {
       { role: R.MANAGER,              icon: '📋', label: 'Marketing Manager',    desc: 'Manage tasks & assets (preview)' },
       { role: R.DESIGNER,             icon: '🎨', label: 'Graphic Designer',     desc: 'Design assignments (preview)' },
       { role: R.SOCIAL_MEDIA_INTERN,  icon: '📱', label: 'Social Media Intern',  desc: 'Content & social (preview)' },
+      { role: R.PHOTOGRAPHER,         icon: '📷', label: 'Photographer',         desc: 'Upload assets only (preview)' },
     ];
     body.innerHTML = roles.map(r => `
       <button class="role-option ${r.role === activeRole ? 'active' : ''}" onclick="App.switchRole('${r.role}')">
@@ -268,6 +314,7 @@ const App = (() => {
     init, navigate, refresh, updateHeader, showModal, closeModal,
     openMoreDrawer, closeMoreDrawer,
     openRoleSwitcher, closeRoleSwitcher, switchRole, exitPreview,
+    logout: () => AuthManager.logout(),
   };
 })();
 

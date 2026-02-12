@@ -12,7 +12,7 @@
 const Store = (() => {
 
   /* ═══ Seed Version — bump to force reseed ═══ */
-  const VERSION = '2026-02-11-v5';
+  const VERSION = '2026-02-11-v6';
   const VERSION_KEY = 'ims_seed_version';
 
   /* ═══ Role Constants ═══ */
@@ -22,6 +22,7 @@ const Store = (() => {
     MANAGER: 'Marketing Manager',
     DESIGNER: 'Graphic Designer',
     SOCIAL_MEDIA_INTERN: 'Social Media Intern',
+    PHOTOGRAPHER: 'Photographer',
   };
   const ALL_ROLES = Object.values(ROLES);
   const MARKETING_TEAM = [...ALL_ROLES];                             // everyone
@@ -97,6 +98,17 @@ const Store = (() => {
     };
   }
   function saveSettings(s) { _set(KEYS.settings, s); }
+
+  /** Sync settings from authenticated session */
+  function syncFromSession(session) {
+    if (!session) return;
+    const s = getSettings();
+    s.role = session.role;
+    s.name = session.name;
+    s.username = session.user_id;
+    saveSettings(s);
+    console.log('%c[STORE]', 'color:#6c5ce7;font-weight:bold', `Settings synced: ${session.name} (${session.role})`);
+  }
 
   /* ── Preview Role (admin-only real mode) ── */
   let _previewRole = null;
@@ -915,6 +927,12 @@ const Store = (() => {
   function clearAll() {
     Object.values(KEYS).forEach(k => localStorage.removeItem(k));
     localStorage.removeItem(VERSION_KEY);
+    // Clear auth data on seed version mismatch to prevent conflicts
+    if (typeof AuthManager !== 'undefined') {
+      AuthManager.clearSession();
+      AuthManager.clearRegistry();
+      console.log('%c[STORE]', 'color:#6c5ce7;font-weight:bold', 'Auth data cleared due to seed version change');
+    }
   }
 
   /* ── Permissions ── */
@@ -926,6 +944,7 @@ const Store = (() => {
       [ROLES.MANAGER]:              ['dashboard','tasks','approvals','assets','content','campaigns','locations','settings'],
       [ROLES.DESIGNER]:             ['dashboard','tasks','assets','content','locations','settings'],
       [ROLES.SOCIAL_MEDIA_INTERN]:  ['dashboard','tasks','assets','content','locations','settings'],
+      [ROLES.PHOTOGRAPHER]:         ['dashboard','assets','settings'],
     },
 
     /*  Action capabilities per role  */
@@ -1052,6 +1071,7 @@ const Store = (() => {
         [ROLES.MANAGER]:              ['assets','content','campaigns','settings'],
         [ROLES.DESIGNER]:             ['assets','content','settings'],
         [ROLES.SOCIAL_MEDIA_INTERN]:  ['content','settings'],
+        [ROLES.PHOTOGRAPHER]:         ['assets','settings'],
       };
       const allowed = map[role] || ['settings'];
       return ALL.filter(i => allowed.includes(i.page));
@@ -1065,7 +1085,7 @@ const Store = (() => {
 
   return {
     VERSION, ROLES, ALL_ROLES,
-    getSettings, saveSettings,
+    getSettings, saveSettings, syncFromSession,
     setPreviewRole, getActiveRole, isAdminMode, isPreviewMode,
     getTeam, saveTeam, addTeamMember, updateTeamMember, deleteTeamMember,
     getTasks, saveTasks, addTask, updateTask, deleteTask,
